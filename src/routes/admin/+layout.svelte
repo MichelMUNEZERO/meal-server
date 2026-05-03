@@ -80,10 +80,10 @@
   </header>
 
   {#if mobileMenuOpen}
-    <div 
-      class="mobile-overlay" 
+    <div
+      class="mobile-overlay"
       onclick={() => (mobileMenuOpen = false)}
-      onkeydown={(e) => e.key === 'Escape' && (mobileMenuOpen = false)}
+      onkeydown={(e) => e.key === "Escape" && (mobileMenuOpen = false)}
       role="button"
       tabindex="0"
       aria-label="Close menu"

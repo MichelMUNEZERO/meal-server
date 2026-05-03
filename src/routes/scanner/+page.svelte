@@ -1,12 +1,14 @@
 <script>
   import { toastStore } from '$lib/stores/toast.js';
+  import { scannerSession } from '$lib/stores/scannerSession.js';
   import Card from '$lib/components/Card.svelte';
-  import { QrCode, Search, CheckCircle2, XCircle, Clock, ShieldCheck, Loader2 } from 'lucide-svelte';
-  import { onMount } from 'svelte';
+  import { QrCode, Search, CheckCircle2, XCircle, Clock, ShieldCheck, Loader2, Camera, History } from 'lucide-svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
 
   let scanInput = $state('');
   let processing = $state(false);
-  let result = $state(null); // { success: boolean, message: string, user: object }
+  let html5Qrcode = null;
 
   const MEAL_TIMES = [
     { type: 'Breakfast', start: 6, end: 11, icon: 'Coffee' },
@@ -21,139 +23,236 @@
 
   let activeMeal = $state(getCurrentMeal());
 
-  // Update active meal every minute
   onMount(() => {
+    // Update active meal every minute
     const interval = setInterval(() => {
       activeMeal = getCurrentMeal();
     }, 60000);
-    return () => clearInterval(interval);
+
+    // Initialize QR Scanner when running in browser
+    if (browser) {
+      import('html5-qrcode').then(({ Html5Qrcode }) => {
+        html5Qrcode = new Html5Qrcode("reader");
+        startScanner();
+      });
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (html5Qrcode && html5Qrcode.isScanning) {
+        html5Qrcode.stop().catch(console.error);
+      }
+    };
   });
 
+  function startScanner() {
+    if (!html5Qrcode || !activeMeal) return;
+    
+    // config for html5-qrcode
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
+    html5Qrcode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        // On success, prevent rapid consecutive scans of the same or during processing
+        if (!processing) {
+            scanInput = decodedText;
+            handleScan();
+        }
+      },
+      (errorMessage) => {
+        // parse error, ignore mostly as it scans continuously
+      }
+    ).catch((err) => {
+      console.error("Failed to start scanner:", err);
+    });
+  }
+
   async function handleScan() {
-    if (!scanInput) return;
+    if (!scanInput || processing) return;
     
     processing = true;
-    result = null;
     
-    // Simulate verification
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate verification delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     try {
-      // For demo, we assume scanInput is a JSON string from our QR generator
-      const data = JSON.parse(scanInput);
+      let parsedData;
+      try {
+        parsedData = JSON.parse(scanInput);
+      } catch (e) {
+        // Fallback for non-JSON strings to allow testing easily
+        parsedData = { id: scanInput, name: 'Unknown User' };
+      }
       
       if (!activeMeal) {
         throw new Error('No meal session currently active.');
       }
 
-      // Check if user has access to this meal type
-      // In a real app, this would be a server-side check
-      // For demo, we'll simulate a check
-      const hasAccess = true; // mock check
+      // Simulate access check (always true for demo)
+      const hasAccess = true;
 
       if (hasAccess) {
-        result = {
+        const result = {
           success: true,
-          message: `Check-in successful for ${activeMeal.type}`,
-          user: { name: 'Michel Munezero', id: 'u1' }
+          message: `Check-in successful`,
+          user: { name: parsedData.name || 'Michel Munezero', id: parsedData.id || 'u1' }
         };
         toastStore.success('Verified!');
+        scannerSession.addScan(result);
       } else {
-        throw new Error(`User does not have access to ${activeMeal.type}.`);
+        throw new Error(`Access denied for ${activeMeal.type}.`);
       }
     } catch (err) {
-      result = {
+      const result = {
         success: false,
-        message: err.message || 'Invalid QR code'
+        message: err.message || 'Invalid QR code',
+        user: { name: 'Unknown', id: '---' }
       };
       toastStore.error(result.message);
+      scannerSession.addScan(result);
     } finally {
       processing = false;
       scanInput = '';
     }
   }
+
+  function formatTime(date) {
+    return new Intl.DateTimeFormat('default', {
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric'
+    }).format(date);
+  }
 </script>
 
 <svelte:head>
-  <title>Scanner - Meal Trackers</title>
+  <title>Dashboard - Meal Trackers</title>
 </svelte:head>
 
-<div class="scanner-page fade-in">
+<div class="dashboard-page fade-in">
+  <!-- Status Indicator: Spans the width of the main content area -->
   <div class="status-banner {activeMeal ? 'active' : 'inactive'}">
     {#if activeMeal}
       <Clock size={20} />
       <span>Current Session: <strong>{activeMeal.type}</strong> ({activeMeal.start}:00 - {activeMeal.end}:00)</span>
+      <span class="status-badge live">Scanning Active</span>
     {:else}
       <Clock size={20} />
       <span>No active meal session at this time.</span>
     {/if}
   </div>
 
-  <Card>
-    <div class="scan-area">
-      <div class="scan-visual">
-        {#if processing}
-          <div class="scanner-line scanning"></div>
-        {/if}
-        <QrCode size={120} class={processing ? 'dim' : ''} />
-      </div>
-
-      <div class="input-section">
-        <p class="hint">Simulate a scan by pasting the QR data here:</p>
-        <div class="input-wrapper">
-          <input 
-            type="text" 
-            class="input" 
-            placeholder="Paste QR payload..." 
-            bind:value={scanInput}
-            onkeydown={(e) => e.key === 'Enter' && handleScan()}
-            disabled={processing || !activeMeal}
-          />
-          <button 
-            class="btn btn-primary" 
-            onclick={handleScan} 
-            disabled={processing || !scanInput || !activeMeal}
-          >
-            {#if processing}
-              <Loader2 class="animate-spin" size={20} />
-            {:else}
-              Verify
-            {/if}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Card>
-
-  {#if result}
-    <div class="result-card fade-in {result.success ? 'success' : 'error'}">
-      <div class="result-icon">
-        {#if result.success}
-          <CheckCircle2 size={48} />
-        {:else}
-          <XCircle size={48} />
-        {/if}
-      </div>
-      <div class="result-info">
-        <h3>{result.success ? 'Access Granted' : 'Access Denied'}</h3>
-        <p>{result.message}</p>
-        {#if result.user}
-          <div class="user-detail">
-            <span class="label">Attendee</span>
-            <span class="value">{result.user.name}</span>
+  <div class="dashboard-grid">
+    <!-- Left Column: Active Scanner -->
+    <div class="scanner-column">
+      <Card class="h-full">
+        <div class="scan-area">
+          <div class="scan-header">
+            <h3>QR Code Scanner</h3>
+            <span class="live-indicator {activeMeal ? 'pulse' : ''}"></span>
           </div>
-        {/if}
-      </div>
-      <button class="close-result" onclick={() => result = null}>&times;</button>
+          
+          <div class="scan-visual-container">
+            {#if processing}
+              <div class="processing-overlay">
+                <Loader2 class="animate-spin" size={48} />
+                <p>Verifying...</p>
+              </div>
+            {/if}
+            
+            <div id="reader" class="scanner-viewport {processing ? 'dim' : ''}"></div>
+            
+            <!-- Fallback styling if reader is not yet initialized visually -->
+            <div class="scanner-borders">
+               <div class="corner top-left"></div>
+               <div class="corner top-right"></div>
+               <div class="corner bottom-left"></div>
+               <div class="corner bottom-right"></div>
+            </div>
+          </div>
+
+          <div class="input-section">
+            <p class="hint">Or simulate scan by pasting data manually:</p>
+            <div class="input-wrapper">
+              <input 
+                type="text" 
+                class="input" 
+                placeholder="Paste payload..." 
+                bind:value={scanInput}
+                onkeydown={(e) => e.key === 'Enter' && handleScan()}
+                disabled={processing || !activeMeal}
+              />
+              <button 
+                class="btn btn-primary" 
+                onclick={handleScan} 
+                disabled={processing || !scanInput || !activeMeal}
+              >
+                Verify
+              </button>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
-  {/if}
+
+    <!-- Right Column: Scan History -->
+    <div class="history-column">
+      <Card class="h-full">
+        <div class="history-header">
+          <h3>Session Scans</h3>
+          <span class="history-count">{$scannerSession.scanHistory.length} Scans</span>
+        </div>
+        
+        <div class="history-list-wrapper">
+          <div class="history-list">
+            {#if $scannerSession.scanHistory.length === 0}
+              <div class="empty-history">
+                <div class="icon-bg">
+                  <History size={32} />
+                </div>
+                <p>No scans yet.</p>
+                <span class="sub-hint">Scanned users will appear here in real-time.</span>
+              </div>
+            {:else}
+              {#each $scannerSession.scanHistory as scan}
+                <div class="history-item {scan.success ? 'success' : 'error'} slide-in">
+                  <div class="item-icon">
+                    {#if scan.success}
+                      <CheckCircle2 size={24} />
+                    {:else}
+                      <XCircle size={24} />
+                    {/if}
+                  </div>
+                  <div class="item-details">
+                    <span class="item-name">{scan.user?.name}</span>
+                    <span class="item-time">{formatTime(scan.timestamp)}</span>
+                  </div>
+                  <div class="item-status">
+                    {#if scan.success}
+                      <span class="badge success-badge">Granted</span>
+                    {:else}
+                      <span class="badge error-badge">Denied</span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+      </Card>
+    </div>
+  </div>
 </div>
 
 <style>
-  .scanner-page {
+  /* Base Dashboard Layout */
+  .dashboard-page {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    height: calc(100vh - 120px); /* Fill available space */
   }
 
   .status-banner {
@@ -165,6 +264,7 @@
     font-size: 0.9375rem;
     background-color: var(--color-surface);
     box-shadow: var(--shadow-sm);
+    width: 100%;
   }
 
   .status-banner.active {
@@ -177,55 +277,148 @@
     color: var(--color-text-muted);
   }
 
+  .status-badge {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .status-badge.live {
+    background-color: rgba(46, 204, 113, 0.15);
+    color: var(--color-success);
+  }
+
+  /* Two Column Grid */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    flex: 1;
+    min-height: 0; /* Important for scrollable children */
+  }
+
+  @media (max-width: 900px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .dashboard-page {
+      height: auto;
+    }
+  }
+
+  /* Left Column: Scanner */
   .scan-area {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 2rem 0;
-    text-align: center;
+    height: 100%;
+    padding: 1.5rem;
   }
 
-  .scan-visual {
-    position: relative;
-    padding: 2rem;
-    background-color: var(--color-bg);
-    border-radius: var(--radius-lg);
-    margin-bottom: 2.5rem;
+  .scan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .scan-header h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
     color: var(--color-primary);
+  }
+
+  .live-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--color-text-muted);
+  }
+
+  .live-indicator.pulse {
+    background-color: var(--color-accent);
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    animation: pulse-red 2s infinite;
+  }
+
+  @keyframes pulse-red {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+  }
+
+  .scan-visual-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background-color: #000;
+    border-radius: var(--radius-lg);
     overflow: hidden;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scanner-viewport {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Target html5-qrcode specific elements if needed to clean up their default UI */
+  :global(#reader video) {
+    object-fit: cover !important;
+  }
+  :global(#reader__dashboard_section_csr) {
+    padding: 10px !important;
+    background: white;
+  }
+  :global(#reader a) {
+    display: none !important;
+  }
+
+  .processing-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(26, 42, 58, 0.85); /* Primary color with opacity */
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    gap: 1rem;
+    font-weight: 600;
   }
 
   .dim { opacity: 0.3; }
 
-  .scanner-line {
+  /* Decorative scanner borders */
+  .scanner-borders .corner {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background-color: var(--color-accent);
-    box-shadow: 0 0 15px var(--color-accent);
-    z-index: 10;
+    width: 30px;
+    height: 30px;
+    border-color: var(--color-accent);
+    border-style: solid;
+    z-index: 5;
+    pointer-events: none;
   }
-
-  .scanning {
-    animation: scan 1.5s ease-in-out infinite;
-  }
-
-  @keyframes scan {
-    0%, 100% { top: 0; }
-    50% { top: 100%; }
-  }
+  .scanner-borders .top-left { top: 20px; left: 20px; border-width: 3px 0 0 3px; }
+  .scanner-borders .top-right { top: 20px; right: 20px; border-width: 3px 3px 0 0; }
+  .scanner-borders .bottom-left { bottom: 20px; left: 20px; border-width: 0 0 3px 3px; }
+  .scanner-borders .bottom-right { bottom: 20px; right: 20px; border-width: 0 3px 3px 0; }
 
   .input-section {
-    width: 100%;
-    max-width: 400px;
+    margin-top: auto;
   }
 
   .hint {
     font-size: 0.8125rem;
     color: var(--color-text-muted);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
   .input-wrapper {
@@ -233,69 +426,128 @@
     gap: 0.5rem;
   }
 
-  .result-card {
+  /* Right Column: History */
+  .history-column :global(.card) {
+    height: 100%;
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-    color: white;
-    position: relative;
-    box-shadow: var(--shadow-lg);
+    flex-direction: column;
   }
 
-  .result-card.success { background-color: var(--color-success); }
-  .result-card.error { background-color: var(--color-accent); }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
 
-  .result-icon { flex-shrink: 0; }
+  .history-header h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
 
-  .result-info h3 {
-    color: white;
-    font-size: 1.25rem;
+  .history-count {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    background-color: rgba(255, 107, 107, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+  }
+
+  .history-list-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .empty-history {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--color-text-muted);
+  }
+
+  .icon-bg {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: var(--color-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .empty-history p {
+    font-weight: 600;
+    color: var(--color-primary);
     margin-bottom: 0.25rem;
   }
 
-  .result-info p {
-    opacity: 0.9;
-    font-size: 0.9375rem;
-    margin-bottom: 1rem;
+  .sub-hint {
+    font-size: 0.8125rem;
   }
 
-  .user-detail {
-    background-color: rgba(255, 255, 255, 0.2);
-    padding: 0.75rem 1.25rem;
-    border-radius: var(--radius-md);
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.2s;
+  }
+
+  .history-item:hover {
+    background-color: var(--color-surface);
+  }
+
+  .history-item.success .item-icon { color: var(--color-success); }
+  .history-item.error .item-icon { color: var(--color-accent); }
+
+  .item-details {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    text-align: left;
   }
 
-  .user-detail .label {
+  .item-name {
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .item-time {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .badge {
     font-size: 0.6875rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-    opacity: 0.8;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
   }
 
-  .user-detail .value {
-    font-weight: 700;
-    font-size: 1.125rem;
+  .success-badge {
+    background-color: rgba(46, 204, 113, 0.15);
+    color: var(--color-success);
   }
 
-  .close-result {
-    position: absolute;
-    top: 1rem;
-    right: 1.5rem;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-    opacity: 0.6;
+  .error-badge {
+    background-color: rgba(255, 107, 107, 0.15);
+    color: var(--color-accent);
   }
-
-  .close-result:hover { opacity: 1; }
 
   .animate-spin {
     animation: spin 1s linear infinite;
@@ -303,5 +555,14 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  .slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
   }
 </style>
