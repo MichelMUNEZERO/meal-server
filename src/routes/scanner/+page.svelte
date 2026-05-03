@@ -157,7 +157,9 @@
           <div class="scan-visual-container">
             {#if processing}
               <div class="processing-overlay">
-                <Loader2 class="animate-spin" size={48} />
+                <span class="animate-spin">
+                  <Loader2 size={48} />
+                </span>
                 <p>Verifying...</p>
               </div>
             {/if}

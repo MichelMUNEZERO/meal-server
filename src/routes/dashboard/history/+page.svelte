@@ -40,7 +40,9 @@
   <Card>
     <div class="table-controls">
       <div class="search-wrapper">
-        <Search size={18} class="search-icon" />
+        <span class="search-icon">
+          <Search size={18} />
+        </span>
         <input 
           type="text" 
           placeholder="Search by date or meal type..." 

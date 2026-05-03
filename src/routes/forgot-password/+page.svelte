@@ -42,7 +42,9 @@
         <div class="form-group">
           <label for="email" class="label">Email Address</label>
           <div class="input-wrapper">
-            <Mail class="input-icon" size={18} />
+            <span class="input-icon">
+              <Mail size={18} />
+            </span>
             <input 
               type="email" 
               id="email" 
@@ -56,7 +58,9 @@
 
         <button type="submit" class="btn btn-primary btn-block" disabled={loading}>
           {#if loading}
-            <Loader2 class="animate-spin" size={20} />
+            <span class="animate-spin">
+              <Loader2 size={20} />
+            </span>
             Sending...
           {:else}
             Send Reset Link

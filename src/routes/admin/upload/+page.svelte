@@ -145,19 +145,27 @@
       <Card title="Required Format">
         <div class="instructions">
           <div class="inst-item">
-            <Check size={18} class="check" />
+            <span class="check">
+              <Check size={18} />
+            </span>
             <p><strong>id:</strong> Unique ID number</p>
           </div>
           <div class="inst-item">
-            <Check size={18} class="check" />
+            <span class="check">
+              <Check size={18} />
+            </span>
             <p><strong>name:</strong> Full Names</p>
           </div>
           <div class="inst-item">
-            <Check size={18} class="check" />
+            <span class="check">
+              <Check size={18} />
+            </span>
             <p><strong>email:</strong> Valid email address</p>
           </div>
           <div class="inst-item">
-            <Check size={18} class="check" />
+            <span class="check">
+              <Check size={18} />
+            </span>
             <p><strong>phone:</strong> Phone or Reg number</p>
           </div>
         </div>
@@ -203,7 +211,9 @@
           </button>
           <button class="btn btn-primary" onclick={uploadData} disabled={processing}>
             {#if processing}
-              <Loader2 class="animate-spin" size={18} />
+              <span class="animate-spin">
+                <Loader2 size={18} />
+              </span>
               Processing...
             {:else}
               <Check size={18} />

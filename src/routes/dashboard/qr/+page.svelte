@@ -66,7 +66,9 @@
       <div class="qr-container">
         {#if loading && !qrImage}
           <div class="qr-placeholder">
-            <RefreshCw class="animate-spin" size={48} />
+            <span class="animate-spin">
+              <RefreshCw size={48} />
+            </span>
           </div>
         {:else}
           <div class="qr-wrapper">
@@ -88,7 +90,9 @@
         </div>
 
         <button class="btn btn-primary btn-block" onclick={generateNewQR} disabled={loading}>
-          <RefreshCw size={20} class={loading ? 'animate-spin' : ''} />
+          <span class={loading ? 'animate-spin' : ''}>
+            <RefreshCw size={20} />
+          </span>
           Regenerate Code
         </button>
       </div>

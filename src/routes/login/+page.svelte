@@ -55,7 +55,9 @@
       <div class="form-group">
         <label for="email" class="label">Email Address</label>
         <div class="input-wrapper">
-          <Mail class="input-icon" size={18} />
+          <span class="input-icon">
+            <Mail size={18} />
+          </span>
           <input 
             type="email" 
             id="email" 
@@ -73,7 +75,9 @@
           <a href="/forgot-password" class="forgot-link">Forgot password?</a>
         </div>
         <div class="input-wrapper">
-          <Lock class="input-icon" size={18} />
+          <span class="input-icon">
+            <Lock size={18} />
+          </span>
           <input 
             type="password" 
             id="password" 
@@ -87,7 +91,9 @@
 
       <button type="submit" class="btn btn-primary btn-block" disabled={loading}>
         {#if loading}
-          <Loader2 class="animate-spin" size={20} />
+          <span class="animate-spin">
+            <Loader2 size={20} />
+          </span>
           Logging in...
         {:else}
           Sign In

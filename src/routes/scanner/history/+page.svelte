@@ -36,7 +36,9 @@
   <Card>
     <div class="table-controls">
       <div class="search-box">
-        <Search size={18} class="search-icon" />
+        <span class="search-icon">
+          <Search size={18} />
+        </span>
         <input 
           type="text" 
           placeholder="Search by name or ID..." 
@@ -80,7 +82,9 @@
               
               <td>
                 <div class="time-wrapper">
-                  <History size={14} class="time-icon" />
+                  <span class="time-icon">
+                    <History size={14} />
+                  </span>
                   <span class="time-text">{formatTime(scan.timestamp)}</span>
                 </div>
               </td>
@@ -96,7 +100,9 @@
             <tr>
               <td colspan="4">
                 <div class="empty-state">
-                  <Search size={48} class="empty-icon" />
+                  <span class="empty-icon">
+                    <Search size={48} />
+                  </span>
                   <h3>No scans found</h3>
                   <p>Check back after scanning some users.</p>
                 </div>

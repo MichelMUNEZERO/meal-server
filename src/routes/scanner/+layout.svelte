@@ -76,7 +76,9 @@
       <Menu size={24} />
     </button>
     <div class="mobile-logo">
-      <Scan size={20} class="text-accent" />
+      <span class="text-accent">
+        <Scan size={20} />
+      </span>
       <span class="logo-text">Meal Scanner</span>
     </div>
     <div class="mobile-summary">
@@ -98,7 +100,9 @@
     <div class="mobile-menu fade-in-left">
       <div class="mobile-menu-header">
         <div class="mobile-logo">
-          <Scan size={20} class="text-accent" />
+          <span class="text-accent">
+            <Scan size={20} />
+          </span>
           <span class="logo-text">Meal Scanner</span>
         </div>
         <button class="close-btn" onclick={() => (mobileMenuOpen = false)}>

@@ -36,8 +36,15 @@ export const authStore = {
     });
 
     if (browser && userData.id) {
-      // Set this session as the active one for this user globally across tabs
+      // 1. Instant cross-tab sync using localStorage
       localStorage.setItem(`active_session_${userData.id}`, sessionId);
+
+      // 2. Cross-browser sync using our backend API
+      fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userData.id, sessionId })
+      }).catch(err => console.error('Failed to sync session with server:', err));
     }
   },
   logout: () => {
@@ -50,19 +57,40 @@ export const authStore = {
   initSessionListener: () => {
     if (!browser) return;
 
-    const checkSession = () => {
+    const checkSession = async () => {
       const state = get(auth);
       if (state.isAuthenticated && state.user?.id) {
+        let shouldLogout = false;
+
+        // Check 1: Local Storage (Instant cross-tab detection)
         const activeGlobalSession = localStorage.getItem(`active_session_${state.user.id}`);
-        // If the global active session exists and doesn't match our current session, force logout
         if (activeGlobalSession && activeGlobalSession !== state.sessionId) {
+          shouldLogout = true;
+        }
+
+        // Check 2: Backend API (Cross-browser / Cross-device detection)
+        if (!shouldLogout) {
+          try {
+            const res = await fetch(`/api/session?userId=${state.user.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.activeSession && data.activeSession !== state.sessionId) {
+                shouldLogout = true;
+              }
+            }
+          } catch (e) {
+            // Ignore network errors silently
+          }
+        }
+
+        if (shouldLogout) {
           console.warn('Session invalidated by login on another device.');
           authStore.logout();
         }
       }
     };
 
-    // Periodic polling as a fallback
+    // Periodic polling to check the server (every 3 seconds)
     setInterval(checkSession, 3000);
 
     // Listen for real-time storage events from other tabs
