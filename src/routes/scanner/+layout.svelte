@@ -2,7 +2,8 @@
   import { authStore } from "$lib/stores/auth.js";
   import { scannerSession } from "$lib/stores/scannerSession.js";
   import { goto } from "$app/navigation";
-  import { LogOut, Scan, Users, Menu, X, LayoutDashboard } from "lucide-svelte";
+  import { page } from "$app/stores";
+  import { LogOut, Scan, Users, Menu, X, LayoutDashboard, History } from "lucide-svelte";
   import { onMount } from "svelte";
   import Toast from "$lib/components/Toast.svelte";
 
@@ -36,9 +37,13 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a href="/scanner" class="nav-link active">
+      <a href="/scanner" class="nav-link {$page.url.pathname === '/scanner' ? 'active' : ''}">
         <LayoutDashboard size={20} />
         Scanner Dashboard
+      </a>
+      <a href="/scanner/history" class="nav-link {$page.url.pathname === '/scanner/history' ? 'active' : ''}">
+        <History size={20} />
+        Recent Scanned
       </a>
       
       <!-- Centralized Scan Summary Badge inside Sidebar -->
@@ -102,9 +107,13 @@
       </div>
       
       <div class="mobile-nav">
-        <a href="/scanner" class="mobile-nav-link" onclick={() => (mobileMenuOpen = false)}>
+        <a href="/scanner" class="mobile-nav-link {$page.url.pathname === '/scanner' ? 'active' : ''}" onclick={() => (mobileMenuOpen = false)}>
           <LayoutDashboard size={20} />
           Scanner Dashboard
+        </a>
+        <a href="/scanner/history" class="mobile-nav-link {$page.url.pathname === '/scanner/history' ? 'active' : ''}" onclick={() => (mobileMenuOpen = false)}>
+          <History size={20} />
+          Recent Scanned
         </a>
       </div>
 
