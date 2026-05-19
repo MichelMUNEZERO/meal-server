@@ -1,6 +1,7 @@
 <script>
-  import { authService } from '$lib/services/auth.service.js';
+  import { usersService } from '$lib/services/users.service.js';
   import { toastStore } from '$lib/stores/toast.js';
+  import { isValidEmail } from '$lib/utils/helpers.js';
   import { Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-svelte';
 
   let email = $state('');
@@ -9,13 +10,19 @@
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!isValidEmail(email.trim())) {
+      toastStore.error('Please enter a valid email address');
+      return;
+    }
+
     loading = true;
     try {
-      await authService.forgotPassword(email);
+      // Backend integration point
+      await usersService.requestPasswordReset(email.trim());
       success = true;
-      toastStore.success('Reset link sent to your email');
-    } catch (err) {
-      toastStore.error('Failed to send reset link');
+      toastStore.success('Check your inbox for reset instructions');
+    } catch {
+      toastStore.error('Could not send reset email. Try again later.');
     } finally {
       loading = false;
     }
@@ -23,84 +30,79 @@
 </script>
 
 <svelte:head>
-  <title>Forgot Password - Trackers</title>
+  <title>Reset password — Meal Trackers</title>
 </svelte:head>
 
-<div class="auth-container">
+<div class="auth-page">
   <div class="auth-card fade-in">
     {#if !success}
-      <div class="header">
-        <a href="/login" class="back-link">
-          <ArrowLeft size={18} />
-          Back to login
-        </a>
-        <h1>Reset Password</h1>
-        <p>Enter your email and we'll send you a link to reset your password.</p>
+      <a href="/login" class="back-link">
+        <ArrowLeft size={18} />
+        Back to sign in
+      </a>
+
+      <div class="auth-brand align-left">
+        <h1>Reset password</h1>
+        <p>Enter your email and we will send you a link to choose a new password.</p>
       </div>
 
-      <form onsubmit={handleSubmit}>
-        <div class="form-group">
-          <label for="email" class="label">Email Address</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <Mail size={18} />
-            </span>
-            <input 
-              type="email" 
-              id="email" 
-              class="input" 
-              bind:value={email} 
-              placeholder="name@example.com"
+      <form class="auth-form" onsubmit={handleSubmit}>
+        <div class="field">
+          <label for="email" class="label">Email</label>
+          <div class="input-wrap">
+            <Mail size={18} class="field-icon" />
+            <input
+              id="email"
+              type="email"
+              class="input"
+              bind:value={email}
+              placeholder="you@example.com"
               required
             />
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block" disabled={loading}>
+        <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
           {#if loading}
-            <span class="animate-spin">
-              <Loader2 size={20} />
-            </span>
-            Sending...
+            <span class="spin"><Loader2 size={18} /></span>
+            Sending…
           {:else}
-            Send Reset Link
+            Send reset link
           {/if}
         </button>
       </form>
     {:else}
-      <div class="success-state fade-in">
-        <div class="success-icon">
-          <CheckCircle size={48} />
-        </div>
+      <div class="success-state">
+        <CheckCircle size={48} class="success-icon" />
         <h1>Check your email</h1>
-        <p>We've sent a password reset link to <strong>{email}</strong>.</p>
-        <a href="/login" class="btn btn-primary btn-block">Return to Login</a>
+        <p>
+          If an account exists for <strong>{email}</strong>, you will receive password reset
+          instructions shortly.
+        </p>
+        <a href="/login" class="btn btn-primary submit-btn">Return to sign in</a>
       </div>
     {/if}
   </div>
 </div>
 
 <style>
-  .auth-container {
+  .auth-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    background-color: var(--color-bg);
+    padding: 1.5rem;
+    background: var(--color-bg);
   }
 
   .auth-card {
-    background-color: var(--color-surface);
     width: 100%;
-    max-width: 450px;
-    padding: 3rem;
+    max-width: 420px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .header {
-    margin-bottom: 2rem;
+    padding: 2.5rem 2rem;
+    box-shadow: var(--shadow-md);
   }
 
   .back-link {
@@ -108,33 +110,73 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     margin-bottom: 1.5rem;
   }
 
-  .header h1 { font-size: 1.75rem; margin-bottom: 0.75rem; }
-  .header p { color: var(--color-text-muted); font-size: 0.9375rem; line-height: 1.6; }
+  .auth-brand.align-left {
+    text-align: left;
+    margin-bottom: 1.75rem;
+  }
 
-  .form-group { margin-bottom: 1.5rem; }
-  .input-wrapper { position: relative; }
-  .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); }
-  .input { padding-left: 3rem; }
-  .btn-block { width: 100%; margin-top: 1rem; padding: 0.75rem; }
+  .auth-brand h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .auth-brand p {
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-wrap :global(.field-icon) {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+  }
+
+  .input-wrap .input {
+    padding-left: 2.75rem;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 0.75rem;
+  }
 
   .success-state {
     text-align: center;
   }
 
-  .success-icon {
-    display: inline-flex;
+  .success-state :global(.success-icon) {
     color: var(--color-success);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
-  .success-state h1 { font-size: 1.75rem; margin-bottom: 1rem; }
-  .success-state p { color: var(--color-text-muted); margin-bottom: 2rem; }
+  .success-state h1 {
+    font-size: 1.375rem;
+    margin-bottom: 0.75rem;
+  }
 
-  .animate-spin {
+  .success-state p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .spin {
     animation: spin 1s linear infinite;
   }
 

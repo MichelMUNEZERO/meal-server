@@ -11,24 +11,20 @@
 
   async function handleLogin(e) {
     e.preventDefault();
-    if (!email || !password) {
-      toastStore.error('Please fill in all fields');
+    if (!email.trim() || !password) {
+      toastStore.error('Please enter your email and password');
       return;
     }
 
     loading = true;
     try {
-      const { user, token } = await authService.login(email, password);
+      const { user, token } = await authService.login(email.trim(), password);
       authStore.login(user, token);
-      toastStore.success(`Welcome back, ${user.name}!`);
-      
-      if (user.role === 'admin') {
-        goto('/admin');
-      } else if (user.role === 'scanner') {
-        goto('/scanner');
-      } else {
-        goto('/dashboard');
-      }
+      toastStore.success(`Welcome back, ${user.name}`);
+
+      if (user.role === 'admin') goto('/admin');
+      else if (user.role === 'scanner') goto('/scanner');
+      else goto('/dashboard');
     } catch (err) {
       toastStore.error(err.message || 'Login failed');
     } finally {
@@ -38,213 +34,173 @@
 </script>
 
 <svelte:head>
-  <title>Login - Meal Trackers</title>
+  <title>Sign in — Meal Trackers</title>
 </svelte:head>
 
-<div class="login-container">
-  <div class="login-card fade-in">
-    <div class="logo">
-      <div class="logo-icon">
-        <LogIn size={32} />
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="logo-icon" aria-hidden="true">
+        <LogIn size={28} />
       </div>
       <h1>Meal Trackers</h1>
-      <p>Sign in to your account</p>
+      <p>Sign in to manage your meal access</p>
     </div>
 
-    <form onsubmit={handleLogin}>
-      <div class="form-group">
-        <label for="email" class="label">Email Address</label>
-        <div class="input-wrapper">
-          <span class="input-icon">
-            <Mail size={18} />
-          </span>
-          <input 
-            type="email" 
-            id="email" 
-            class="input" 
-            bind:value={email} 
-            placeholder="name@example.com"
+    <form class="auth-form" onsubmit={handleLogin}>
+      <div class="field">
+        <label for="email" class="label">Email</label>
+        <div class="input-wrap">
+          <Mail size={18} class="field-icon" />
+          <input
+            id="email"
+            type="email"
+            class="input"
+            bind:value={email}
+            placeholder="you@example.com"
+            autocomplete="email"
             required
           />
         </div>
       </div>
 
-      <div class="form-group">
-        <div class="label-row">
+      <div class="field">
+        <div class="field-label-row">
           <label for="password" class="label">Password</label>
-          <a href="/forgot-password" class="forgot-link">Forgot password?</a>
+          <a href="/forgot-password" class="link-sm">Forgot password?</a>
         </div>
-        <div class="input-wrapper">
-          <span class="input-icon">
-            <Lock size={18} />
-          </span>
-          <input 
-            type="password" 
-            id="password" 
-            class="input" 
-            bind:value={password} 
+        <div class="input-wrap">
+          <Lock size={18} class="field-icon" />
+          <input
+            id="password"
+            type="password"
+            class="input"
+            bind:value={password}
             placeholder="••••••••"
+            autocomplete="current-password"
             required
           />
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" disabled={loading}>
+      <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
         {#if loading}
-          <span class="animate-spin">
-            <Loader2 size={20} />
-          </span>
-          Logging in...
+          <span class="spin"><Loader2 size={18} /></span>
+          Signing in…
         {:else}
-          Sign In
+          Sign in
         {/if}
       </button>
     </form>
 
-    <div class="demo-hints">
-      <p><strong>Demo Access:</strong></p>
-      <p>User: <code>michel@example.com</code> / <code>password</code></p>
-      <p>Admin: <code>admin@trackers.com</code> / <code>Mich540el12!</code></p>
-      <p>Scanner: <code>scanner@trackers.com</code> / <code>scanner123</code></p>
-    </div>
+    {#if import.meta.env.DEV}
+      <p class="dev-note">
+        Development mode: use mock accounts from project documentation.
+      </p>
+    {/if}
   </div>
 </div>
 
 <style>
-  .login-container {
+  .auth-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    background-color: var(--color-bg);
-    background-image: radial-gradient(circle at 10% 20%, rgba(26, 42, 58, 0.03) 0%, rgba(26, 42, 58, 0) 90%),
-                      radial-gradient(circle at 90% 80%, rgba(229, 77, 56, 0.03) 0%, rgba(229, 77, 56, 0) 90%);
+    padding: 1.5rem;
+    background: linear-gradient(160deg, var(--color-bg) 0%, #e2e8f0 100%);
   }
 
-  .login-card {
-    background-color: var(--color-surface);
+  .auth-card {
     width: 100%;
-    max-width: 440px;
-    padding: 3.5rem 2.5rem;
+    max-width: 420px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(26, 42, 58, 0.05);
+    padding: 2.5rem 2rem;
+    box-shadow: var(--shadow-lg);
   }
 
-  .logo {
+  .auth-brand {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
   }
 
   .logo-icon {
     display: inline-flex;
-    padding: 1.25rem;
-    background-color: var(--color-primary);
+    padding: 0.875rem;
+    background: var(--color-primary);
     color: white;
-    border-radius: 1.25rem;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 10px 20px rgba(26, 42, 58, 0.2);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
   }
 
-  .logo h1 {
-    font-size: 1.75rem;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.03em;
+  .auth-brand h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.375rem;
   }
 
-  .logo p {
+  .auth-brand p {
     color: var(--color-text-muted);
     font-size: 0.9375rem;
   }
 
-  .form-group {
-    margin-bottom: 1.75rem;
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
   }
 
-  .label-row {
+  .field-label-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
-  .forgot-link {
+  .link-sm {
     font-size: 0.8125rem;
     font-weight: 600;
-    color: var(--color-accent);
   }
 
-  .input-wrapper {
+  .input-wrap {
     position: relative;
   }
 
-  .input-icon {
+  .input-wrap :global(.field-icon) {
     position: absolute;
-    left: 1.25rem;
+    left: 1rem;
     top: 50%;
     transform: translateY(-50%);
     color: var(--color-text-muted);
-    opacity: 0.5;
+    pointer-events: none;
   }
 
-  .input {
-    padding-left: 3.25rem;
-    height: 3.5rem;
-    font-family: inherit;
+  .input-wrap .input {
+    padding-left: 2.75rem;
   }
 
-  .btn-block {
+  .submit-btn {
     width: 100%;
-    margin-top: 1.5rem;
-    height: 3.5rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
   }
 
-  .demo-hints {
-    margin-top: 3rem;
-    padding: 1.25rem;
-    background-color: #F8FAFC;
-    border-radius: var(--radius-md);
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-    line-height: 1.8;
-    border: 1px dashed var(--color-border);
-  }
-
-  .demo-hints code {
-    background-color: white;
-    padding: 0.125rem 0.375rem;
-    border-radius: 4px;
-    color: var(--color-primary);
-    font-weight: 600;
-    border: 1px solid var(--color-border);
-  }
-
-  @media (max-width: 480px) {
-    .login-card {
-      padding: 2.5rem 1.5rem;
-    }
-
-    .logo h1 {
-      font-size: 1.5rem;
-    }
-
-    .logo {
-      margin-bottom: 2rem;
-    }
-
-    .demo-hints {
-      margin-top: 2rem;
-      padding: 1rem;
-    }
-  }
-
-  .animate-spin {
+  .spin {
     animation: spin 1s linear infinite;
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  .dev-note {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    text-align: center;
   }
 </style>
