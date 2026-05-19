@@ -1,42 +1,68 @@
-# sv
+# Meal Trackers
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+QR-based meal access and attendance frontend built with **SvelteKit 2** and **Svelte 5**. Designed to connect to a **Django REST** backend (integration points are marked in the codebase).
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Member dashboard** — meal plan overview, rotating QR codes, attendance history
+- **Admin panel** — users, meal packages, attendance export, bulk Excel import
+- **Scanner** — camera QR verification with session log
+- **Auth** — login, forgot password, reset password (token link), change password in account settings
+- **Mock API layer** — full UI works offline until `VITE_USE_MOCK=false`
 
-```sh
-# create a new project
-npx sv create my-app
-```
+## Quick start
 
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv@0.15.2 create --template minimal --types jsdoc --install npm ./
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+```bash
+npm install
+cp .env.example .env
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+Open [http://localhost:5173](http://localhost:5173).
 
-To create a production version of your app:
+### Development accounts (mock mode only)
 
-```sh
-npm run build
+| Role    | Email                 | Password     |
+|---------|-----------------------|--------------|
+| Member  | michel@example.com    | password     |
+| Admin   | admin@trackers.com    | admin123     |
+| Scanner | scanner@trackers.com  | scanner123   |
+
+Do not use these credentials in production.
+
+## Backend integration
+
+1. Set `VITE_API_BASE_URL` to your Django API root.
+2. Set `VITE_USE_MOCK=false`.
+3. Implement endpoints referenced in `src/lib/services/` (search for `Backend integration point`).
+
+Core services:
+
+- `auth.service.js` — login / logout
+- `users.service.js` — CRUD, password reset, change password
+- `meals.service.js` — meal plan per user
+- `attendance.service.js` — history, QR generation, scan verification
+
+## Scripts
+
+| Command        | Description              |
+|----------------|--------------------------|
+| `npm run dev`  | Development server       |
+| `npm run build`| Production build         |
+| `npm run check`| Typecheck / svelte-check |
+
+## Project structure
+
+```
+src/
+  lib/
+    components/   # UI building blocks
+    services/     # API layer (mock + real)
+    stores/       # Auth, toast, scanner session
+    utils/        # Guards, helpers, constants
+  routes/         # SvelteKit pages
 ```
 
-You can preview the production build with `npm run preview`.
+## License
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Private — Michel Munezero.
