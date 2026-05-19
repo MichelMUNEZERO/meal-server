@@ -5,7 +5,8 @@
   import { usersService } from '$lib/services/users.service.js';
   import { toastStore } from '$lib/stores/toast.js';
   import { isStrongPassword } from '$lib/utils/helpers.js';
-  import { Lock, Loader2, CheckCircle, ArrowLeft } from 'lucide-svelte';
+  import PasswordField from '$lib/components/PasswordField.svelte';
+  import { Loader2, CheckCircle, ArrowLeft } from 'lucide-svelte';
 
   let password = $state('');
   let confirmPassword = $state('');
@@ -70,37 +71,23 @@
       </div>
 
       <form class="auth-form" onsubmit={handleSubmit}>
-        <div class="field">
-          <label for="password" class="label">New password</label>
-          <div class="input-wrap">
-            <Lock size={18} class="field-icon" />
-            <input
-              id="password"
-              type="password"
-              class="input"
-              bind:value={password}
-              minlength="8"
-              autocomplete="new-password"
-              required
-            />
-          </div>
-        </div>
+        <PasswordField
+          id="password"
+          label="New password"
+          bind:value={password}
+          autocomplete="new-password"
+          required
+          minlength={8}
+        />
 
-        <div class="field">
-          <label for="confirm" class="label">Confirm password</label>
-          <div class="input-wrap">
-            <Lock size={18} class="field-icon" />
-            <input
-              id="confirm"
-              type="password"
-              class="input"
-              bind:value={confirmPassword}
-              minlength="8"
-              autocomplete="new-password"
-              required
-            />
-          </div>
-        </div>
+        <PasswordField
+          id="confirm"
+          label="Confirm password"
+          bind:value={confirmPassword}
+          autocomplete="new-password"
+          required
+          minlength={8}
+        />
 
         <button type="submit" class="btn btn-primary submit-btn" disabled={loading || !token}>
           {#if loading}
@@ -172,22 +159,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-  }
-
-  .input-wrap {
-    position: relative;
-  }
-
-  .input-wrap :global(.field-icon) {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-muted);
-  }
-
-  .input-wrap .input {
-    padding-left: 2.75rem;
   }
 
   .submit-btn {

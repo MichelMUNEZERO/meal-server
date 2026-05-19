@@ -2,8 +2,9 @@
   import { authService } from '$lib/services/auth.service.js';
   import { authStore } from '$lib/stores/auth.js';
   import { toastStore } from '$lib/stores/toast.js';
+  import PasswordField from '$lib/components/PasswordField.svelte';
   import { goto } from '$app/navigation';
-  import { LogIn, Mail, Lock, Loader2 } from 'lucide-svelte';
+  import { LogIn, Mail, Loader2, ArrowLeft } from 'lucide-svelte';
 
   let email = $state('');
   let password = $state('');
@@ -39,12 +40,17 @@
 
 <div class="auth-page">
   <div class="auth-card">
+    <a href="/" class="back-home">
+      <ArrowLeft size={16} />
+      Back to home
+    </a>
+
     <div class="auth-brand">
       <div class="logo-icon" aria-hidden="true">
         <LogIn size={28} />
       </div>
-      <h1>Meal Trackers</h1>
-      <p>Sign in to manage your meal access</p>
+      <h1>Sign in</h1>
+      <p>Enter your email and password to continue.</p>
     </div>
 
     <form class="auth-form" onsubmit={handleLogin}>
@@ -66,21 +72,17 @@
 
       <div class="field">
         <div class="field-label-row">
-          <label for="password" class="label">Password</label>
+          <span class="label-spacer"></span>
           <a href="/forgot-password" class="link-sm">Forgot password?</a>
         </div>
-        <div class="input-wrap">
-          <Lock size={18} class="field-icon" />
-          <input
-            id="password"
-            type="password"
-            class="input"
-            bind:value={password}
-            placeholder="••••••••"
-            autocomplete="current-password"
-            required
-          />
-        </div>
+        <PasswordField
+          id="password"
+          label="Password"
+          bind:value={password}
+          placeholder="Your password"
+          autocomplete="current-password"
+          required
+        />
       </div>
 
       <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
@@ -95,7 +97,7 @@
 
     {#if import.meta.env.DEV}
       <p class="dev-note">
-        Development mode: use mock accounts from project documentation.
+        Dev tip: mock accounts are listed in the project README.
       </p>
     {/if}
   </div>
@@ -119,6 +121,21 @@
     border-radius: var(--radius-lg);
     padding: 2.5rem 2rem;
     box-shadow: var(--shadow-lg);
+  }
+
+  .back-home {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+
+  .back-home:hover {
+    color: var(--color-accent);
   }
 
   .auth-brand {
@@ -153,9 +170,8 @@
 
   .field-label-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
+    justify-content: flex-end;
+    margin-bottom: -0.25rem;
   }
 
   .link-sm {
@@ -178,6 +194,7 @@
 
   .input-wrap .input {
     padding-left: 2.75rem;
+    width: 100%;
   }
 
   .submit-btn {

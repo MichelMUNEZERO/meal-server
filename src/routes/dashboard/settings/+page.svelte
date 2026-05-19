@@ -4,6 +4,7 @@
   import { toastStore } from '$lib/stores/toast.js';
   import { isStrongPassword } from '$lib/utils/helpers.js';
   import Card from '$lib/components/Card.svelte';
+  import PasswordField from '$lib/components/PasswordField.svelte';
   import { Lock, Mail, User, Loader2 } from 'lucide-svelte';
 
   let currentPassword = $state('');
@@ -70,41 +71,29 @@
 
     <Card title="Change password">
       <form class="password-form" onsubmit={handleChangePassword}>
-        <div class="field">
-          <label for="current" class="label">Current password</label>
-          <input
-            id="current"
-            type="password"
-            class="input"
-            bind:value={currentPassword}
-            autocomplete="current-password"
-            required
-          />
-        </div>
-        <div class="field">
-          <label for="new" class="label">New password</label>
-          <input
-            id="new"
-            type="password"
-            class="input"
-            bind:value={newPassword}
-            minlength="8"
-            autocomplete="new-password"
-            required
-          />
-        </div>
-        <div class="field">
-          <label for="confirm" class="label">Confirm new password</label>
-          <input
-            id="confirm"
-            type="password"
-            class="input"
-            bind:value={confirmPassword}
-            minlength="8"
-            autocomplete="new-password"
-            required
-          />
-        </div>
+        <PasswordField
+          id="current"
+          label="Current password"
+          bind:value={currentPassword}
+          autocomplete="current-password"
+          required
+        />
+        <PasswordField
+          id="new"
+          label="New password"
+          bind:value={newPassword}
+          autocomplete="new-password"
+          required
+          minlength={8}
+        />
+        <PasswordField
+          id="confirm"
+          label="Confirm new password"
+          bind:value={confirmPassword}
+          autocomplete="new-password"
+          required
+          minlength={8}
+        />
         <button type="submit" class="btn btn-primary" disabled={loading}>
           {#if loading}
             <span class="spin"><Loader2 size={18} /></span>
