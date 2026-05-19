@@ -1,32 +1,22 @@
 <script>
   import { toastStore } from '$lib/stores/toast.js';
   import { scannerSession } from '$lib/stores/scannerSession.js';
+  import { attendanceService } from '$lib/services/attendance.service.js';
+  import { getCurrentMealWindow } from '$lib/utils/helpers.js';
   import Card from '$lib/components/Card.svelte';
-  import { QrCode, Search, CheckCircle2, XCircle, Clock, ShieldCheck, Loader2, Camera, History } from 'lucide-svelte';
-  import { onMount, onDestroy } from 'svelte';
+  import { CheckCircle2, XCircle, Clock, Loader2, History } from 'lucide-svelte';
+  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
 
   let scanInput = $state('');
   let processing = $state(false);
   let html5Qrcode = null;
-
-  const MEAL_TIMES = [
-    { type: 'Breakfast', start: 6, end: 11, icon: 'Coffee' },
-    { type: 'Lunch', start: 12, end: 15, icon: 'Utensils' },
-    { type: 'Dinner', start: 19, end: 22, icon: 'Moon' }
-  ];
-
-  function getCurrentMeal() {
-    const hour = new Date().getHours();
-    return MEAL_TIMES.find(m => hour >= m.start && hour < m.end);
-  }
-
-  let activeMeal = $state(getCurrentMeal());
+  let activeMeal = $state(getCurrentMealWindow());
 
   onMount(() => {
     // Update active meal every minute
     const interval = setInterval(() => {
-      activeMeal = getCurrentMeal();
+      activeMeal = getCurrentMealWindow();
     }, 60000);
 
     // Initialize QR Scanner when running in browser
@@ -71,44 +61,29 @@
 
   async function handleScan() {
     if (!scanInput || processing) return;
-    
+
     processing = true;
-    
-    // Simulate verification delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
+
     try {
-      let parsedData;
-      try {
-        parsedData = JSON.parse(scanInput);
-      } catch (e) {
-        // Fallback for non-JSON strings to allow testing easily
-        parsedData = { id: scanInput, name: 'Unknown User' };
-      }
-      
       if (!activeMeal) {
-        throw new Error('No meal session currently active.');
+        throw new Error('No meal session is active right now.');
       }
 
-      // Simulate access check (always true for demo)
-      const hasAccess = true;
+      // Backend integration point — verify QR with Django
+      const verified = await attendanceService.verifyScan(scanInput);
 
-      if (hasAccess) {
-        const result = {
-          success: true,
-          message: `Check-in successful`,
-          user: { name: parsedData.name || 'Michel Munezero', id: parsedData.id || 'u1' }
-        };
-        toastStore.success('Verified!');
-        scannerSession.addScan(result);
-      } else {
-        throw new Error(`Access denied for ${activeMeal.type}.`);
-      }
+      const result = {
+        success: true,
+        message: 'Check-in successful',
+        user: { name: verified.user.name, id: verified.user.id }
+      };
+      toastStore.success(`${verified.user.name} — ${verified.mealType}`);
+      scannerSession.addScan(result);
     } catch (err) {
       const result = {
         success: false,
         message: err.message || 'Invalid QR code',
-        user: { name: 'Unknown', id: '---' }
+        user: { name: 'Unknown', id: '—' }
       };
       toastStore.error(result.message);
       scannerSession.addScan(result);

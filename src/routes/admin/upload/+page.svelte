@@ -62,14 +62,15 @@
 
   async function uploadData() {
     processing = true;
-    // Simulate API call with meal access settings
     const payload = {
       users: data,
       access: mealAccess
     };
+
+    // Backend integration point — POST /api/users/bulk-import/
     console.log('Uploading payload:', payload);
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     toastStore.success('Users imported and permissions set!');
     data = [];
     file = null;
