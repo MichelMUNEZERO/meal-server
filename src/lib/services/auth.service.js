@@ -1,28 +1,55 @@
-import { mockUser, mockAdmin } from './mock-data';
+import { apiFetch, USE_MOCK } from './api.js';
+import { mockUser, mockAdmin, mockScanner, MOCK_CREDENTIALS } from './mock-data.js';
+
+function delay(ms = 500) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export const authService = {
+  /**
+   * Backend integration point — POST /api/auth/login/
+   * @param {string} email
+   * @param {string} password
+   */
   login: async (email, password) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    if (email === 'michel@example.com' && password === 'password') {
-      return { user: mockUser, token: 'mock-user-token' };
-    } else if (email === 'admin@trackers.com' && password === 'Mich540el12!') {
-      return { user: mockAdmin, token: 'mock-admin-token' };
-    } else if (email === 'scanner@trackers.com' && password === 'scanner123') {
-      return { user: { id: 's1', name: 'Scanner Joe', email: 'scanner@trackers.com', role: 'scanner' }, token: 'mock-scanner-token' };
-    } else {
+    if (USE_MOCK) {
+      await delay(700);
+      const normalized = email.trim().toLowerCase();
+
+      if (
+        normalized === MOCK_CREDENTIALS.user.email &&
+        password === MOCK_CREDENTIALS.user.password
+      ) {
+        return { user: mockUser, token: 'mock-user-token' };
+      }
+      if (
+        normalized === MOCK_CREDENTIALS.admin.email &&
+        password === MOCK_CREDENTIALS.admin.password
+      ) {
+        return { user: mockAdmin, token: 'mock-admin-token' };
+      }
+      if (
+        normalized === MOCK_CREDENTIALS.scanner.email &&
+        password === MOCK_CREDENTIALS.scanner.password
+      ) {
+        return { user: mockScanner, token: 'mock-scanner-token' };
+      }
       throw new Error('Invalid email or password');
     }
+
+    const data = await apiFetch('/auth/login/', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    return { user: data.user, token: data.access || data.token };
   },
-  
+
+  /** Backend integration point */
   logout: async () => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return true;
-  },
-  
-  forgotPassword: async (email) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return true;
+    if (USE_MOCK) {
+      await delay(200);
+      return true;
+    }
+    return apiFetch('/auth/logout/', { method: 'POST' });
   }
 };
