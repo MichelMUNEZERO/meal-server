@@ -1,8 +1,8 @@
 <script>
-  let { title, children } = $props();
+  let { title, class: className = '', children } = $props();
 </script>
 
-<div class="card fade-in">
+<div class="card fade-in {className}">
   {#if title}
     <h3 class="card-title">{title}</h3>
   {/if}
@@ -15,17 +15,17 @@
   .card {
     background-color: var(--color-surface);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     padding: 1.5rem;
     border: 1px solid var(--color-border);
-    height: 100%;
   }
 
   .card-title {
-    font-size: 1.125rem;
-    margin-bottom: 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
     color: var(--color-text);
-    border-bottom: 1px solid var(--color-border);
     padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
   }
 </style>
