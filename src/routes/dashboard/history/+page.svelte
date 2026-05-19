@@ -1,17 +1,25 @@
 <script>
   import { onMount } from 'svelte';
+  import * as XLSX from 'xlsx';
   import { attendanceService } from '$lib/services/attendance.service.js';
   import { authStore } from '$lib/stores/auth.js';
   import Card from '$lib/components/Card.svelte';
-  import { Search, Filter, Download, ChevronLeft, ChevronRight } from 'lucide-svelte';
+  import Pagination from '$lib/components/Pagination.svelte';
+  import StatusBadge from '$lib/components/StatusBadge.svelte';
+  import { Search, Download } from 'lucide-svelte';
+  import { paginate } from '$lib/utils/helpers.js';
+  import { PAGINATION_DEFAULT_SIZE } from '$lib/utils/constants.js';
 
   let history = $state([]);
   let loading = $state(true);
   let searchQuery = $state('');
+  let mealFilter = $state('all');
+  let page = $state(1);
 
   onMount(async () => {
     try {
-      history = await attendanceService.getHistory($authStore.user.id);
+      // Backend integration point
+      history = await attendanceService.getHistory($authStore.user?.id);
     } catch (err) {
       console.error(err);
     } finally {
@@ -19,55 +27,70 @@
     }
   });
 
-  const filteredHistory = $derived(
-    history.filter(item => 
-      item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.date.includes(searchQuery)
-    )
+  const filtered = $derived(
+    history.filter((item) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        item.type.toLowerCase().includes(q) || item.date.includes(searchQuery);
+      const matchesMeal = mealFilter === 'all' || item.type === mealFilter;
+      return matchesSearch && matchesMeal;
+    })
   );
+
+  const paged = $derived(paginate(filtered, page, PAGINATION_DEFAULT_SIZE));
+
+  $effect(() => {
+    if (page > paged.totalPages) page = paged.totalPages;
+  });
+
+  function exportCsv() {
+    const worksheet = XLSX.utils.json_to_sheet(filtered);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `My_Attendance_${date}.xlsx`);
+  }
 </script>
 
 <svelte:head>
-  <title>History - Meal Trackers</title>
+  <title>History — Meal Trackers</title>
 </svelte:head>
 
 <div class="history-page fade-in">
-  <div class="header">
-    <h1>Attendance History</h1>
-    <p>View your past meal check-ins and activity.</p>
-  </div>
+  <header class="page-header">
+    <h1>Attendance history</h1>
+    <p>Your past meal check-ins.</p>
+  </header>
 
   <Card>
-    <div class="table-controls">
-      <div class="search-wrapper">
-        <span class="search-icon">
-          <Search size={18} />
-        </span>
-        <input 
-          type="text" 
-          placeholder="Search by date or meal type..." 
+    <div class="toolbar">
+      <div class="search-wrap">
+        <Search size={18} />
+        <input
+          type="search"
           class="input"
+          placeholder="Search date or meal…"
           bind:value={searchQuery}
         />
       </div>
-      <div class="action-buttons">
-        <button class="btn btn-outline">
-          <Filter size={18} />
-          Filter
-        </button>
-        <button class="btn btn-outline">
-          <Download size={18} />
-          Export
-        </button>
-      </div>
+      <select class="input filter-select" bind:value={mealFilter}>
+        <option value="all">All meals</option>
+        <option value="Breakfast">Breakfast</option>
+        <option value="Lunch">Lunch</option>
+        <option value="Dinner">Dinner</option>
+      </select>
+      <button type="button" class="btn btn-outline" onclick={exportCsv} disabled={!filtered.length}>
+        <Download size={18} />
+        Export
+      </button>
     </div>
 
-    <div class="table-container">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>Date</th>
-            <th>Meal Type</th>
+            <th>Meal</th>
             <th>Time</th>
             <th>Status</th>
           </tr>
@@ -75,28 +98,17 @@
         <tbody>
           {#if loading}
             {#each Array(3) as _}
-              <tr class="skeleton-row">
-                <td><div class="skeleton"></div></td>
-                <td><div class="skeleton"></div></td>
-                <td><div class="skeleton"></div></td>
-                <td><div class="skeleton"></div></td>
-              </tr>
+              <tr><td colspan="4"><div class="skeleton"></div></td></tr>
             {/each}
-          {:else if filteredHistory.length === 0}
-            <tr>
-              <td colspan="4" class="empty-state">No records found.</td>
-            </tr>
+          {:else if !paged.items.length}
+            <tr><td colspan="4" class="empty">No records found.</td></tr>
           {:else}
-            {#each filteredHistory as item}
+            {#each paged.items as item}
               <tr>
-                <td>{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                <td>
-                  <span class="meal-type">{item.type}</span>
-                </td>
+                <td>{new Date(item.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</td>
+                <td>{item.type}</td>
                 <td>{item.time}</td>
-                <td>
-                  <span class="status-badge success">Present</span>
-                </td>
+                <td><StatusBadge status={item.status} /></td>
               </tr>
             {/each}
           {/if}
@@ -104,146 +116,97 @@
       </table>
     </div>
 
-    <div class="pagination">
-      <p class="pagination-info">Showing {filteredHistory.length} records</p>
-      <div class="pagination-btns">
-        <button class="btn btn-outline btn-sm" disabled>
-          <ChevronLeft size={16} />
-        </button>
-        <button class="btn btn-outline btn-sm" disabled>
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    </div>
+    <Pagination
+      bind:page
+      totalPages={paged.totalPages}
+      total={paged.total}
+      start={paged.start}
+      end={paged.end}
+    />
   </Card>
 </div>
 
 <style>
-  .header {
-    margin-bottom: 2rem;
+  .history-page {
+    max-width: 960px;
+    margin: 0 auto;
   }
 
-  .table-controls {
+  .toolbar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  @media (max-width: 640px) {
-    .table-controls {
-      flex-direction: column;
-      align-items: stretch;
-    }
-  }
-
-  .search-wrapper {
-    position: relative;
-    flex: 1;
-    max-width: 400px;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-muted);
-  }
-
-  .search-wrapper .input {
-    padding-left: 2.75rem;
-  }
-
-  .action-buttons {
-    display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
+    margin-bottom: 1.25rem;
   }
 
-  .table-container {
+  .search-wrap {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .search-wrap .input {
+    border: none;
+    padding-left: 0;
+    box-shadow: none;
+  }
+
+  .search-wrap .input:focus {
+    box-shadow: none;
+  }
+
+  .filter-select {
+    width: auto;
+    min-width: 140px;
+  }
+
+  .table-wrap {
     overflow-x: auto;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
   }
 
   table {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
   }
 
   th {
-    padding: 1rem;
+    text-align: left;
+    padding: 0.75rem 1rem;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--color-text-muted);
-    border-bottom: 2px solid var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
   }
 
   td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--color-bg);
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
   }
 
-  .meal-type {
-    font-weight: 600;
-    color: var(--color-primary);
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  .status-badge.success {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: var(--color-success);
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 3rem;
-    color: var(--color-text-muted);
-  }
-
-  .pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-bg);
-  }
-
-  .pagination-info {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-  }
-
-  .pagination-btns {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .btn-sm {
-    padding: 0.4rem;
-  }
-
-  /* Skeleton loading */
   .skeleton {
     height: 1rem;
-    background-color: var(--color-bg);
+    background: var(--color-bg);
     border-radius: 4px;
-    animation: pulse 1.5s infinite ease-in-out;
+    animation: pulse 1.2s ease infinite;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted);
   }
 
   @keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
+    50% { opacity: 0.5; }
   }
 </style>
