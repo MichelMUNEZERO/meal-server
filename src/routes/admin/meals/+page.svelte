@@ -33,7 +33,6 @@
   });
 
   async function loadPlan(userId) {
-    // Backend integration point
     plan = await mealsService.getPlanForUser(userId);
   }
 
@@ -46,7 +45,6 @@
     if (!selectedId) return;
     saving = true;
     try {
-      // Backend integration point
       await mealsService.updatePlanForUser(selectedId, plan);
       toastStore.success('Meal package updated');
     } catch (err) {
@@ -61,7 +59,7 @@
   <title>Meal packages — Admin</title>
 </svelte:head>
 
-<div class="meals-page fade-in">
+<div class="admin-content fade-in">
   <header class="page-header">
     <h1>Meal packages</h1>
     <p>Assign breakfast, lunch, and dinner access per member.</p>
@@ -69,7 +67,7 @@
 
   <Card>
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="data-empty">Loading…</p>
     {:else}
       <div class="field">
         <label for="user" class="label">Select member</label>
@@ -83,19 +81,19 @@
       <div class="checks">
         <label class="check">
           <input type="checkbox" bind:checked={plan.breakfast} />
-          Breakfast
+          Breakfast (07:00–09:30)
         </label>
         <label class="check">
           <input type="checkbox" bind:checked={plan.lunch} />
-          Lunch
+          Lunch (12:30–14:30)
         </label>
         <label class="check">
           <input type="checkbox" bind:checked={plan.dinner} />
-          Dinner
+          Dinner (19:30–21:30)
         </label>
       </div>
 
-      <div class="row">
+      <div class="field">
         <label for="days" class="label">Days remaining</label>
         <input
           id="days"
@@ -107,9 +105,9 @@
         />
       </div>
 
-      <button type="button" class="btn btn-primary" onclick={savePlan} disabled={saving}>
+      <button type="button" class="btn btn-primary save-btn" onclick={savePlan} disabled={saving}>
         {#if saving}
-          <span class="spin"><Loader2 size={18} /></span>
+          <Loader2 size={18} class="spin" />
         {:else}
           <Save size={18} />
         {/if}
@@ -120,10 +118,6 @@
 </div>
 
 <style>
-  .meals-page {
-    max-width: 560px;
-  }
-
   .field {
     margin-bottom: 1.25rem;
   }
@@ -136,6 +130,7 @@
     padding: 1rem;
     background: var(--color-bg);
     border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
   }
 
   .check {
@@ -144,27 +139,22 @@
     gap: 0.625rem;
     font-weight: 500;
     cursor: pointer;
+    font-size: 0.9375rem;
   }
 
   .check input {
-    width: 1rem;
-    height: 1rem;
+    width: 1.125rem;
+    height: 1.125rem;
     accent-color: var(--color-accent);
   }
 
-  .row {
-    margin-bottom: 1.25rem;
+  .save-btn {
+    width: 100%;
   }
 
-  .muted {
-    color: var(--color-text-muted);
-  }
-
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  @media (min-width: 480px) {
+    .save-btn {
+      width: auto;
+    }
   }
 </style>

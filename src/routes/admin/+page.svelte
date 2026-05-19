@@ -14,12 +14,10 @@
 
   onMount(async () => {
     try {
-      // Backend integration point — replace with /api/admin/stats/
       const [users, logs] = await Promise.all([
         usersService.getAll(),
         attendanceService.getHistory()
       ]);
-
       const today = new Date().toISOString().split('T')[0];
       stats = {
         totalUsers: users.length,
@@ -41,21 +39,23 @@
 </script>
 
 <svelte:head>
-  <title>Admin overview</title>
+  <title>Overview — Admin</title>
 </svelte:head>
 
-<div class="overview fade-in">
+<div class="admin-content fade-in">
   <header class="page-header">
     <h1>Overview</h1>
     <p>System activity at a glance.</p>
   </header>
 
-  <div class="stats-grid">
+  <div class="admin-stats-grid">
     {#each cards as stat}
       {@const Icon = stat.icon}
       <Card>
         <div class="stat-card">
-          <div class="icon-wrap"><Icon size={22} /></div>
+          <div class="icon-wrap">
+            <Icon size={22} />
+          </div>
           <div class="meta">
             <span class="label">{stat.name}</span>
             <span class="value">{stat.value}</span>
@@ -65,23 +65,19 @@
     {/each}
   </div>
 
-  <Card title="Getting started">
+  <Card title="Quick links">
     <ul class="tips">
-      <li>Upload members via <a href="/admin/upload">Bulk upload</a>.</li>
-      <li>Assign meals under <a href="/admin/meals">Meal packages</a>.</li>
-      <li>Export logs from <a href="/admin/attendance">Attendance</a>.</li>
+      <li><a href="/admin/users">User management</a> — members and password resets</li>
+      <li><a href="/admin/meals">Meal packages</a> — breakfast, lunch, dinner access</li>
+      <li><a href="/admin/attendance">Attendance logs</a> — view and export records</li>
+      <li><a href="/admin/scanner">QR scanner</a> — scan codes at the counter</li>
+      <li><a href="/admin/upload">Bulk upload</a> — import users from Excel</li>
+      <li><a href="/admin/settings">Settings</a> — change your password</li>
     </ul>
   </Card>
 </div>
 
 <style>
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
   .stat-card {
     display: flex;
     gap: 1rem;
@@ -97,6 +93,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .meta .label {
@@ -115,7 +112,7 @@
   .tips {
     padding-left: 1.25rem;
     color: var(--color-text-muted);
-    line-height: 1.8;
+    line-height: 1.9;
     font-size: 0.9375rem;
   }
 </style>

@@ -42,7 +42,6 @@
     if (!editUser) return;
     saving = true;
     try {
-      // Backend integration point
       const updated = await usersService.update(editUser.id, {
         name: editUser.name,
         email: editUser.email,
@@ -61,9 +60,8 @@
   async function sendPasswordReset(user) {
     resetLoading = user.id;
     try {
-      // Backend integration point — triggers reset email for this user
       const result = await usersService.adminSendPasswordReset(user.id);
-      toastStore.success(`Password reset email sent to ${result.email || user.email}`);
+      toastStore.success(`Reset email sent to ${result.email || user.email}`);
     } catch (err) {
       toastStore.error(err.message || 'Could not send reset email');
     } finally {
@@ -76,76 +74,117 @@
   <title>Users — Admin</title>
 </svelte:head>
 
-<div class="users-page fade-in">
-  <header class="page-header row">
+<div class="admin-content fade-in">
+  <header class="page-header page-header-row">
     <div>
       <h1>User management</h1>
       <p>Manage members, status, and password resets.</p>
     </div>
-    <button type="button" class="btn btn-primary" disabled title="Available after API integration">
-      <UserPlus size={18} />
-      Add user
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" disabled title="Available after API integration">
+        <UserPlus size={18} />
+        Add user
+      </button>
+    </div>
   </header>
 
   <Card>
-    <div class="toolbar">
-      <div class="search">
+    <div class="data-toolbar">
+      <div class="search-field">
         <Search size={18} />
         <input type="search" placeholder="Search name or email…" bind:value={searchQuery} />
       </div>
-      <span class="count">{filteredUsers.length} users</span>
+      <span class="toolbar-meta">{filteredUsers.length} users</span>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Member</th>
-            <th>Status</th>
-            <th>Plan</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#if loading}
-            <tr><td colspan="4" class="muted">Loading users…</td></tr>
-          {:else if !filteredUsers.length}
-            <tr><td colspan="4" class="muted">No users match your search.</td></tr>
-          {:else}
+    {#if loading}
+      <p class="data-empty">Loading users…</p>
+    {:else if !filteredUsers.length}
+      <p class="data-empty">No users match your search.</p>
+    {:else}
+      <!-- Mobile: stacked cards -->
+      <ul class="data-cards">
+        {#each filteredUsers as user}
+          <li class="data-card">
+            <div class="data-card-head">
+              <div>
+                <p class="data-card-title">{user.name}</p>
+                <p class="data-card-sub">{user.email}</p>
+              </div>
+              <StatusBadge status={user.status} />
+            </div>
+            <div class="data-card-row">
+              <span>Plan: <strong>{user.plan}</strong></span>
+            </div>
+            <div class="data-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" onclick={() => openEdit(user)}>
+                <Edit2 size={16} />
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                onclick={() => sendPasswordReset(user)}
+                disabled={resetLoading === user.id}
+              >
+                {#if resetLoading === user.id}
+                  <Loader2 size={16} class="spin" />
+                {:else}
+                  <KeyRound size={16} />
+                {/if}
+                Reset password
+              </button>
+            </div>
+          </li>
+        {/each}
+      </ul>
+
+      <!-- Desktop: table -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Status</th>
+              <th>Plan</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {#each filteredUsers as user}
               <tr>
                 <td>
-                  <p class="name">{user.name}</p>
-                  <p class="email">{user.email}</p>
+                  <p class="cell-title">{user.name}</p>
+                  <p class="cell-sub">{user.email}</p>
                 </td>
                 <td><StatusBadge status={user.status} /></td>
-                <td><span class="plan">{user.plan}</span></td>
-                <td class="actions">
-                  <button type="button" class="btn btn-ghost btn-sm" onclick={() => openEdit(user)} aria-label="Edit">
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-outline btn-sm"
-                    onclick={() => sendPasswordReset(user)}
-                    disabled={resetLoading === user.id}
-                    title="Send password reset email"
-                  >
-                    {#if resetLoading === user.id}
-                      <Loader2 size={16} class="spin" />
-                    {:else}
-                      <KeyRound size={16} />
-                    {/if}
-                    Reset password
-                  </button>
+                <td><span class="plan-tag">{user.plan}</span></td>
+                <td>
+                  <div class="table-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick={() => openEdit(user)} aria-label="Edit">
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      onclick={() => sendPasswordReset(user)}
+                      disabled={resetLoading === user.id}
+                    >
+                      {#if resetLoading === user.id}
+                        <Loader2 size={16} class="spin" />
+                      {:else}
+                        <KeyRound size={16} />
+                      {/if}
+                      Reset
+                    </button>
+                  </div>
                 </td>
               </tr>
             {/each}
-          {/if}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    {/if}
   </Card>
 </div>
 
@@ -178,102 +217,25 @@
 </Modal>
 
 <style>
-  .page-header.row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .search {
-    flex: 1;
-    min-width: 220px;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .search input {
-    flex: 1;
-    border: none;
-    padding: 0.625rem 0;
-    font-size: 0.875rem;
-    background: transparent;
-  }
-
-  .search input:focus {
-    outline: none;
-  }
-
-  .count {
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-    font-weight: 600;
-  }
-
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  th {
-    text-align: left;
-    padding: 0.75rem 1rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--color-border);
-    vertical-align: middle;
-  }
-
-  .name {
+  .cell-title {
     font-weight: 600;
     color: var(--color-primary);
   }
 
-  .email {
+  .cell-sub {
     font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
 
-  .plan {
+  .plan-tag {
     font-weight: 600;
     font-size: 0.875rem;
   }
 
-  .actions {
+  .table-actions {
     display: flex;
-    gap: 0.5rem;
     flex-wrap: wrap;
-  }
-
-  .muted {
-    text-align: center;
-    color: var(--color-text-muted);
-    padding: 2rem;
+    gap: 0.375rem;
   }
 
   .edit-form {
@@ -289,11 +251,9 @@
     margin-top: 0.5rem;
   }
 
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
   }
 </style>

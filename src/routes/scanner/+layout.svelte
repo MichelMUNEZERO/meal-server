@@ -6,7 +6,8 @@
   import { requireRole } from '$lib/utils/guards.js';
   import { ROLES } from '$lib/utils/constants.js';
   import AppShell from '$lib/components/AppShell.svelte';
-  import { LayoutDashboard, History, Users } from 'lucide-svelte';
+  import { LayoutDashboard, History, Users, Settings } from 'lucide-svelte';
+  import '$lib/styles/admin-pages.css';
 
   let { children } = $props();
 
@@ -21,7 +22,8 @@
 
   const navItems = [
     { name: 'Scanner', path: '/scanner', icon: LayoutDashboard },
-    { name: 'Recent scans', path: '/scanner/history', icon: History }
+    { name: 'Recent scans', path: '/scanner/history', icon: History },
+    { name: 'Settings', path: '/scanner/settings', icon: Settings }
   ];
 </script>
 
@@ -42,10 +44,18 @@
       </div>
     </div>
   {/snippet}
-  {@render children()}
+  <div class="scanner-content-wrapper">
+    {@render children()}
+  </div>
 </AppShell>
 
 <style>
+  .scanner-content-wrapper {
+    width: 100%;
+    max-width: 56rem;
+    margin: 0 auto;
+  }
+
   .scan-summary {
     display: flex;
     align-items: center;

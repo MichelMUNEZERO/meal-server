@@ -82,11 +82,11 @@
   <title>Bulk Upload - Trackers Admin</title>
 </svelte:head>
 
-<div class="upload-page fade-in">
-  <div class="header">
-    <h1>Bulk User Import</h1>
+<div class="admin-content fade-in">
+  <header class="page-header">
+    <h1>Bulk user import</h1>
     <p>Upload an Excel file to create users and assign event access.</p>
-  </div>
+  </header>
 
   <div class="upload-grid">
     <div class="upload-section">
@@ -228,18 +228,6 @@
 </div>
 
 <style>
-  .header { 
-    margin-bottom: 2.5rem; 
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  @media (max-width: 640px) {
-    .header h1 { font-size: 1.5rem; }
-    .header p { font-size: 0.875rem; }
-  }
-
   .access-config { margin-bottom: 2rem; }
   .access-config h3 { margin-bottom: 0.5rem; font-size: 1.125rem; }
   .access-config p { color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 1.25rem; }
@@ -334,11 +322,23 @@
 
   .preview-footer {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 1rem;
+    gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--color-border);
+  }
+
+  @media (max-width: 479px) {
+    .preview-footer {
+      flex-direction: column;
+    }
+
+    .preview-footer .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   .instructions { display: flex; flex-direction: column; gap: 1.25rem; }

@@ -20,10 +20,11 @@
 
   function isActive(path) {
     const current = $page.url.pathname;
-    if (path === '/admin' || path === '/dashboard' || path === '/scanner') {
-      return current === path;
+    const exactPaths = ['/admin', '/dashboard', '/scanner'];
+    if (exactPaths.includes(path)) {
+      return current === path || current === `${path}/`;
     }
-    return current.startsWith(path);
+    return current === path || current.startsWith(`${path}/`);
   }
 </script>
 
@@ -345,12 +346,16 @@
     margin-left: var(--sidebar-width);
     padding: 2rem;
     min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   @media (max-width: 1024px) {
     .main-content {
       margin-left: 0;
-      padding: calc(var(--header-height) + 1.25rem) 1rem 2rem;
+      padding: calc(var(--header-height) + 1rem) 0.875rem 2rem;
     }
   }
 </style>

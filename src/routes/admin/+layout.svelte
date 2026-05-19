@@ -10,8 +10,11 @@
     Users,
     Utensils,
     ClipboardList,
-    Upload
+    Upload,
+    ScanLine,
+    Settings
   } from 'lucide-svelte';
+  import '$lib/styles/admin-pages.css';
 
   let { children } = $props();
 
@@ -29,7 +32,9 @@
     { name: 'Users', path: '/admin/users', icon: Users },
     { name: 'Meal packages', path: '/admin/meals', icon: Utensils },
     { name: 'Attendance', path: '/admin/attendance', icon: ClipboardList },
-    { name: 'Bulk upload', path: '/admin/upload', icon: Upload }
+    { name: 'QR scanner', path: '/admin/scanner', icon: ScanLine },
+    { name: 'Bulk upload', path: '/admin/upload', icon: Upload },
+    { name: 'Settings', path: '/admin/settings', icon: Settings }
   ];
 </script>
 
@@ -42,12 +47,21 @@
     userRole="Administrator"
     onlogout={logout}
   >
-    {@render children()}
+    <div class="admin-content-wrapper">
+      {@render children()}
+    </div>
   </AppShell>
 </div>
 
 <style>
   .admin-layout :global(.main-content) {
-    max-width: 1280px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-content-wrapper {
+    width: 100%;
+    max-width: 56rem;
+    margin: 0 auto;
   }
 </style>
