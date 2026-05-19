@@ -10,6 +10,16 @@ QR-based meal access and attendance frontend built with **SvelteKit 2** and **Sv
 - **Auth** — login, forgot password, reset password (token link), change password in account settings
 - **Mock API layer** — full UI works offline until `VITE_USE_MOCK=false`
 
+## Requirements
+
+- **Node.js 20.19+** or **22.12+** (required by Vite 8). Node 18 will not work.
+- If you use [nvm](https://github.com/nvm-sh/nvm): `nvm install` then `nvm use` (see `.nvmrc`).
+- This repo includes local Node archives; you can also extract one and prepend it to `PATH`, for example:
+  ```bash
+  export PATH="$PWD/node-v20.12.2-linux-x64/bin:$PATH"
+  node -v   # should show v20.x
+  ```
+
 ## Quick start
 
 ```bash
