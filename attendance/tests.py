@@ -1,10 +1,11 @@
-from datetime import time
+from datetime import datetime, time, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.utils import timezone
 
 from attendance.models import AttendanceRecord
+from meal_system.api_utils import get_current_meal_window
 from users.models import ActiveSession, UserProfile
 
 
@@ -60,3 +61,12 @@ class AttendanceAccessTests(TestCase):
 			HTTP_AUTHORIZATION=f'Bearer {self.member_session.token}',
 		)
 		self.assertEqual(response.status_code, 403)
+
+	def test_meal_windows_match_event_schedule(self):
+		morning = timezone.make_aware(datetime(2026, 5, 21, 6, 30), dt_timezone.utc)
+		midday = timezone.make_aware(datetime(2026, 5, 21, 13, 0), dt_timezone.utc)
+		evening = timezone.make_aware(datetime(2026, 5, 21, 19, 0), dt_timezone.utc)
+
+		self.assertEqual(get_current_meal_window(morning)['type'], 'Breakfast')
+		self.assertEqual(get_current_meal_window(midday)['type'], 'Lunch')
+		self.assertEqual(get_current_meal_window(evening)['type'], 'Dinner')
