@@ -373,7 +373,7 @@ def _load_excel_rows(uploaded_file):
 
 
 @csrf_exempt
-@require_auth(roles=[UserProfile.ROLE_ADMIN, UserProfile.ROLE_SCANNER, UserProfile.ROLE_USER])
+@require_auth(roles=[UserProfile.ROLE_ADMIN])
 def users_list(request):
 	if request.method == 'GET':
 		users = User.objects.select_related('profile', 'meal_plan').order_by('id')
@@ -494,6 +494,12 @@ def user_detail(request, user_id):
 			profile.save()
 
 		return json_success(user=serialize_user(user, include_meal_plan=True))
+
+	if request.method == 'DELETE':
+		if request.api_user.id == user.id:
+			return json_error('You cannot delete your own account', status=400)
+		user.delete()
+		return json_success(deleted=True, userId=user_id)
 
 	return json_error('Method not allowed', status=405)
 
