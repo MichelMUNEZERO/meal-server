@@ -1,9 +1,10 @@
 from io import BytesIO
 import zipfile
 
+from django.core import mail
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from users.models import ActiveSession, UserProfile
 from users.views import _load_excel_rows
@@ -117,10 +118,25 @@ class UserImportTests(TestCase):
 		self.assertEqual(rows[0]['phone'], '0700000000')
 		self.assertEqual(rows[0]['registration_number'], 'REG-001')
 
-	def test_bulk_import_creates_account_with_optional_fields(self):
+	def test_load_excel_rows_with_title_row_and_custom_headers(self):
 		content = _build_xlsx([
-			['Member Name', 'Email Address'],
-			['Jane Doe', 'jane.doe@example.com'],
+			['Student List 2026'],
+			['ID Number', 'Student Full Name', 'E Mail', 'Mobile Number'],
+			['2026-001', 'Amina Yusuf', 'amina@example.com', '+250700000001'],
+		])
+		rows = _load_excel_rows(SimpleUploadedFile('import.xlsx', content, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))
+
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0]['name'], 'Amina Yusuf')
+		self.assertEqual(rows[0]['email'], 'amina@example.com')
+		self.assertEqual(rows[0]['phone'], '+250700000001')
+		self.assertEqual(rows[0]['registration_number'], '2026-001')
+
+	@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+	def test_bulk_import_creates_account_with_complete_fields_and_email(self):
+		content = _build_xlsx([
+			['Member Name', 'Email Address', 'Contact Number', 'Reg #'],
+			['Jane Doe', 'jane.doe@example.com', '0700000000', 'REG-123'],
 		])
 		file_obj = SimpleUploadedFile(
 			'import.xlsx',
@@ -136,11 +152,13 @@ class UserImportTests(TestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.json()['created'], 1)
+		self.assertEqual(len(mail.outbox), 1)
+		self.assertEqual(mail.outbox[0].to, ['jane.doe@example.com'])
 
 		user = User.objects.get(email='jane.doe@example.com')
 		self.assertEqual(user.get_full_name(), 'Jane Doe')
-		self.assertEqual(user.profile.phone, '')
-		self.assertIsNone(user.profile.registration_number)
+		self.assertEqual(user.profile.phone, '0700000000')
+		self.assertEqual(user.profile.registration_number, 'REG-123')
 
 	def test_create_user_as_admin(self):
 		response = self.client.post(
