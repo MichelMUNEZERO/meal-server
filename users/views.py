@@ -11,6 +11,7 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 
+import pandas as pd
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -185,10 +186,29 @@ def session_view(request):
 
 
 HEADER_ALIASES = {
-	'id': {'id', 'pk', 'user id', 'userid', 'source id', 'sourceid'},
-	'name': {'name', 'full name', 'fullname', 'student name', 'member name'},
-	'email': {'email', 'email address', 'emailaddress', 'e-mail', 'mail'},
-	'phone': {'phone', 'phone number', 'phonenumber', 'mobile', 'telephone', 'contact', 'contact number'},
+	'id': {'id', 'pk', 'user id', 'userid', 'source id', 'sourceid', 'student id', 'member id'},
+	'name': {
+		'name',
+		'full name',
+		'fullname',
+		'student name',
+		'member name',
+		'name of student',
+		'student full name',
+		'candidate name',
+	},
+	'email': {'email', 'email address', 'emailaddress', 'e-mail', 'mail', 'e mail', 'student email'},
+	'phone': {
+		'phone',
+		'phone number',
+		'phonenumber',
+		'mobile',
+		'telephone',
+		'contact',
+		'contact number',
+		'mobile number',
+		'tel',
+	},
 	'registration_number': {
 		'registration number',
 		'registrationnumber',
@@ -200,6 +220,14 @@ HEADER_ALIASES = {
 		'register no',
 		'matric no',
 		'matric number',
+		'admission no',
+		'admission number',
+		'student no',
+		'id number',
+		'student id',
+		'student number',
+		'adm no',
+		'adm number',
 	},
 }
 
@@ -236,8 +264,55 @@ def _split_name(full_name):
 	return parts[0], parts[1]
 
 
+def _normalize_excel_value(value):
+	if value is None or pd.isna(value):
+		return ''
+	return str(value).strip()
+
+
 def _normalize_header(value):
 	return re.sub(r'[^a-z0-9]+', '', _as_text(value).lower())
+
+
+def _looks_like_email(value):
+	value = _as_text(value)
+	return bool(re.search(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', value))
+
+
+def _looks_like_phone(value):
+	value = _as_text(value)
+	if not value:
+		return False
+	digits = re.sub(r'\D+', '', value)
+	return 7 <= len(digits) <= 15 and len(digits) >= max(7, len(value) // 2)
+
+
+def _looks_like_registration(value):
+	value = _as_text(value)
+	if not value:
+		return False
+	if _looks_like_email(value) or _looks_like_phone(value):
+		return False
+	return bool(re.search(r'[A-Za-z0-9]', value))
+
+
+def _looks_like_name(value):
+	value = _as_text(value)
+	if not value:
+		return False
+	if _looks_like_email(value) or _looks_like_phone(value):
+		return False
+	if len(value) < 2:
+		return False
+	return bool(re.search(r'[A-Za-z]', value))
+
+
+def _candidate_score(values, predicate):
+	clean_values = [_normalize_excel_value(value) for value in values if _normalize_excel_value(value)]
+	if not clean_values:
+		return 0.0
+	matches = sum(1 for value in clean_values if predicate(value))
+	return matches / len(clean_values)
 
 
 def _get_cell_text(cell, shared_strings):
@@ -272,9 +347,9 @@ def _resolve_header_row(rows):
 	best_resolved = {}
 	best_score = -1
 
-	for index, (_, cells) in enumerate(rows):
+	for index, row_values in enumerate(rows):
 		norm = {}
-		for col, text in cells.items():
+		for col, text in enumerate(row_values):
 			key = _normalize_header(text)
 			if key:
 				norm[key] = col
@@ -294,13 +369,99 @@ def _resolve_header_row(rows):
 			best_score = score
 
 	if best_index is None or best_score == 0:
-		raise ValueError('Missing columns: name, email')
+		best_index = 0
+		best_resolved = {}
 
-	missing_required = [column for column in ('name', 'email') if column not in best_resolved]
+	return best_index, best_resolved
+
+
+def _infer_missing_columns(rows, header_index, resolved):
+	used_columns = set(resolved.values())
+	data_rows = rows[header_index + 1:]
+	if not data_rows:
+		raise ValueError('Workbook contains no data rows')
+
+	columns = list(range(len(rows[header_index]))) if header_index < len(rows) else []
+	column_values = {col: [] for col in columns}
+	for row_values in data_rows:
+		for col in columns:
+			if col < len(row_values):
+				column_values[col].append(row_values[col])
+
+	def choose_column(predicate):
+		best_col = None
+		best_score = 0.0
+		for col, values in column_values.items():
+			if col in used_columns:
+				continue
+			score = _candidate_score(values, predicate)
+			if score > best_score:
+				best_col = col
+				best_score = score
+		return best_col, best_score
+
+	for canonical, predicate in (
+		('name', _looks_like_name),
+		('email', _looks_like_email),
+		('phone', _looks_like_phone),
+		('registration_number', _looks_like_registration),
+	):
+		if canonical not in resolved:
+			col, score = choose_column(predicate)
+			if col is not None and score >= 0.5:
+				resolved[canonical] = col
+				used_columns.add(col)
+
+	missing_required = [column for column in ('name', 'email', 'phone', 'registration_number') if column not in resolved]
 	if missing_required:
 		raise ValueError(f'Missing columns: {", ".join(missing_required)}')
 
-	return best_index, best_resolved
+	return resolved
+
+
+def _read_excel_rows(uploaded_file):
+	try:
+		frame = pd.read_excel(uploaded_file, header=None, dtype=object, engine='openpyxl')
+	except Exception as exc:
+		raise ValueError('Not a valid .xlsx file') from exc
+
+	if frame.empty:
+		raise ValueError('Workbook contains no rows')
+
+	rows = frame.fillna('').values.tolist()
+	header_index, resolved = _resolve_header_row(rows[:25])
+	resolved = _infer_missing_columns(rows, header_index, resolved)
+
+	parsed = []
+	for row_values in rows[header_index + 1:]:
+		if not any(_normalize_excel_value(value) for value in row_values):
+			continue
+
+		entry = {}
+		for canon, col_index in resolved.items():
+			entry[canon] = _normalize_excel_value(row_values[col_index]) if col_index < len(row_values) else ''
+		parsed.append(entry)
+
+	return parsed
+
+
+def _load_excel_rows(uploaded_file):
+	return _read_excel_rows(uploaded_file)
+
+
+def _send_onboarding_email(user, temporary_password, token):
+	reset_url = f'{settings.FRONTEND_BASE_URL}/reset-password?token={token.token}'
+	full_name = user.get_full_name() or user.username
+	subject = 'Your Meal System account credentials'
+	message = (
+		f'Hello {full_name},\n\n'
+		'Your account has been created successfully.\n\n'
+		f'Email: {user.email}\n'
+		f'Temporary password: {temporary_password}\n\n'
+		f'Reset your password here: {reset_url}\n\n'
+		'Please log in and change your password after first access.\n'
+	)
+	send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
 
 
 XLSX_NS = {
@@ -337,39 +498,6 @@ def _resolve_sheet_path(archive):
 
 def _cell_text(cell, shared_strings):
 	return _get_cell_text(cell, shared_strings)
-
-
-def _load_excel_rows(uploaded_file):
-	content = uploaded_file.read()
-	if not content:
-		raise ValueError('Empty upload')
-	try:
-		with zipfile.ZipFile(io.BytesIO(content)) as archive:
-			shared = _read_shared_strings(archive)
-			sheet_path = _resolve_sheet_path(archive)
-			root = ET.fromstring(archive.read(sheet_path))
-	except zipfile.BadZipFile:
-		raise ValueError('Not a valid .xlsx file')
-
-	rows = []
-	for row in root.findall('main:sheetData/main:row', XLSX_NS):
-		cells = _row_to_cells(row, shared)
-		rows.append((int(row.attrib.get('r', '0') or 0), cells))
-
-	if not rows:
-		raise ValueError('Workbook contains no rows')
-
-	header_index, resolved = _resolve_header_row(rows[:25])
-
-	parsed = []
-	for _, cells in rows[header_index + 1:]:
-		if not any(_as_text(value) for value in cells.values()):
-			continue
-		entry = {}
-		for canon, col in resolved.items():
-			entry[canon] = _as_text(cells.get(col, ''))
-		parsed.append(entry)
-	return parsed
 
 
 @csrf_exempt
@@ -542,7 +670,7 @@ def bulk_import_users(request):
 	rows = []
 	if file_obj:
 		try:
-			rows = _load_excel_rows(file_obj)
+			rows = _read_excel_rows(file_obj)
 		except ValueError as exc:
 			return json_error(str(exc))
 	else:
@@ -582,6 +710,10 @@ def bulk_import_users(request):
 				validate_email(email)
 			except ValidationError:
 				row_errors.append('Email is invalid')
+		if not phone:
+			row_errors.append('Phone is required')
+		if not registration_number:
+			row_errors.append('Registration number is required')
 
 		if email in seen_emails or email in existing_emails:
 			row_errors.append('Duplicate email')
