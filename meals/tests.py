@@ -3,7 +3,7 @@ import json
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
-from meal_system.api_utils import get_or_create_meal_plan
+from meal_system.api_utils import get_or_create_meal_plan, serialize_user
 from users.models import ActiveSession, UserProfile
 
 
@@ -61,3 +61,11 @@ class MealPlanAccessTests(TestCase):
 		)
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(response.json()['dinner'])
+
+	def test_user_plan_summary_shows_days(self):
+		plan = get_or_create_meal_plan(self.member)
+		plan.days_remaining = 4
+		plan.total_days = 10
+		plan.save()
+
+		self.assertEqual(serialize_user(self.member)['plan'], '4/10 days')
