@@ -141,7 +141,7 @@ This document describes the HTTP API for the Meal System project. It includes au
   - URL: `GET|PUT|PATCH /api/users/<user_id>/meal-plan/`
   - Auth: Bearer token
   - Allowed roles: `admin`, `user`, `scanner`
-  - GET: returns meal plan summary/fields
+  - GET: returns the event-day summary and meal access fields for the user
   - PUT/PATCH: accepted fields: `breakfast`, `lunch`, `dinner` (boolean), `daysRemaining`, `totalDays`, `validUntil` (ISO date or `null`)
 
 - **All meal plans**
@@ -193,9 +193,9 @@ This document describes the HTTP API for the Meal System project. It includes au
 
 **Meal windows and QR expiry**
 - Meal windows defined in `meal_system/api_utils.py::MEAL_WINDOWS` (default values):
-  - Breakfast 07:00 - 09:30
-  - Lunch     12:30 - 14:30
-  - Dinner    19:30 - 21:30
+  - Breakfast 06:00 - 11:50
+  - Lunch     12:00 - 17:30
+  - Dinner    18:00 - 22:00
 - QR expiry constant: `QR_EXPIRY_SECONDS = 30` (seconds). QR older than this will be rejected.
 
 
