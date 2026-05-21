@@ -128,3 +128,108 @@ class UserImportTests(TestCase):
 		self.assertEqual(user.get_full_name(), 'Jane Doe')
 		self.assertEqual(user.profile.phone, '')
 		self.assertIsNone(user.profile.registration_number)
+
+	def test_create_user_as_admin(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{'email': 'newuser@example.com', 'name': 'New User', 'password': 'securepassword123'},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.get(email='newuser@example.com')
+		self.assertEqual(user.get_full_name(), 'New User')
+		self.assertEqual(user.profile.role, UserProfile.ROLE_USER)
+
+	def test_create_scanner_user_as_admin(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'scanner@example.com',
+				'name': 'Scanner User',
+				'password': 'scannerpass123',
+				'phone': '0700000001',
+				'registration_number': 'SCAN-001',
+				'role': UserProfile.ROLE_SCANNER,
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.get(email='scanner@example.com')
+		self.assertEqual(user.profile.role, UserProfile.ROLE_SCANNER)
+		self.assertEqual(user.profile.phone, '0700000001')
+		self.assertEqual(user.profile.registration_number, 'SCAN-001')
+
+	def test_create_admin_user_as_admin(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'newadmin@example.com',
+				'name': 'New Admin',
+				'password': 'adminpass123',
+				'role': UserProfile.ROLE_ADMIN,
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.get(email='newadmin@example.com')
+		self.assertEqual(user.profile.role, UserProfile.ROLE_ADMIN)
+
+	def test_list_users_with_role_filter(self):
+		scanner_user = User.objects.create_user(
+			username='scanner@example.com',
+			email='scanner@example.com',
+			password='password123',
+			first_name='Test',
+			last_name='Scanner',
+		)
+		profile = UserProfile.objects.create(
+			user=scanner_user,
+			role=UserProfile.ROLE_SCANNER,
+			status=UserProfile.STATUS_ACTIVE,
+		)
+
+		response = self.client.get(
+			'/api/users/?role=admin',
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		users_data = response.json()
+		admin_count = sum(1 for u in users_data if u['role'] == UserProfile.ROLE_ADMIN)
+		self.assertGreaterEqual(admin_count, 1)
+
+	def test_create_user_duplicate_email_fails(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'admin@example.com',
+				'name': 'Duplicate',
+				'password': 'password123',
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('already exists', response.json()['detail'])
+
+	def test_create_user_short_password_fails(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'shortpw@example.com',
+				'name': 'Short PW',
+				'password': 'short',
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('at least 8', response.json()['detail'])
