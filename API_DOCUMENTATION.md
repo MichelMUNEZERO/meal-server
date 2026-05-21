@@ -112,10 +112,12 @@ This document describes the HTTP API for the Meal System project. It includes au
   - Auth: Bearer token
   - Allowed roles: `admin`
   - Uploads may be sent as a file named `file` or `excel`.
+  - The importer uses Pandas to read and study the spreadsheet before creating accounts.
   - Excel header order does not matter; the importer matches common header aliases such as `Full Name`, `E-mail`, `Reg #`, and `Contact Number`.
-  - Required fields: `name` and `email`.
-  - Optional fields: `phone` and `registration_number`.
-  - If a phone number or registration number is missing, the account is still created and the missing value is left blank.
+  - The importer can also recover from extra title rows or slightly messy layouts by inferring the correct columns before creating accounts.
+  - Required fields: `name`, `email`, `phone`, and `registration_number`.
+  - If any required field is missing in a row, that row is skipped with a validation error.
+  - For each created account, the system generates a temporary password, creates a reset token, and sends the credentials to the user email address.
 
 - **User detail**
   - URL: `GET /api/users/<user_id>/` (read), `PATCH /api/users/<user_id>/` (update)
