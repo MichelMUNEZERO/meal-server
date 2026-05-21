@@ -18,9 +18,9 @@ from users.models import ActiveSession, PasswordResetToken, UserProfile
 QR_EXPIRY_SECONDS = 30
 
 MEAL_WINDOWS = [
-    {'type': 'Breakfast', 'start': (7, 0), 'end': (9, 30)},
-    {'type': 'Lunch', 'start': (12, 30), 'end': (14, 30)},
-    {'type': 'Dinner', 'start': (19, 30), 'end': (21, 30)},
+    {'type': 'Breakfast', 'start': (6, 0), 'end': (11, 50)},
+    {'type': 'Lunch', 'start': (12, 0), 'end': (17, 30)},
+    {'type': 'Dinner', 'start': (18, 0), 'end': (22, 0)},
 ]
 
 
@@ -62,14 +62,11 @@ def get_or_create_meal_plan(user):
 
 
 def meal_plan_summary(meal_plan):
-    items = []
-    if meal_plan.breakfast:
-        items.append('B')
-    if meal_plan.lunch:
-        items.append('L')
-    if meal_plan.dinner:
-        items.append('D')
-    return '/'.join(items) if items else 'None'
+    remaining = meal_plan.days_remaining
+    total = meal_plan.total_days
+    if total:
+        return f'{remaining}/{total} days'
+    return f'{remaining} days'
 
 
 def serialize_meal_plan(meal_plan):
@@ -152,9 +149,14 @@ def sign_qr_payload(user_id, meal_type, timestamp):
     return hmac.new(settings.SECRET_KEY.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
 
 
-def build_qr_payload(user, meal_type, timestamp=None):
+def build_qr_payload(user, meal_type=None, timestamp=None):
     timestamp = int(timestamp or timezone.now().timestamp() * 1000)
-    meal_type = normalize_meal_type(meal_type) or 'Lunch'
+    meal_type = normalize_meal_type(meal_type)
+    if not meal_type:
+        active_window = get_current_meal_window()
+        if not active_window:
+            raise ValueError('No meal session is active right now')
+        meal_type = active_window['type']
     payload = {
         'userId': str(user.id),
         'userName': user.get_full_name() or user.username,
