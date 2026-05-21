@@ -90,6 +90,19 @@ class UserImportTests(TestCase):
 			status=UserProfile.STATUS_ACTIVE,
 		)
 		self.session = ActiveSession.objects.create(user=self.admin, token='test-token', is_active=True)
+		self.member = User.objects.create_user(
+			username='member@example.com',
+			email='member@example.com',
+			password='password123',
+			first_name='Member',
+			last_name='User',
+		)
+		UserProfile.objects.create(
+			user=self.member,
+			role=UserProfile.ROLE_USER,
+			status=UserProfile.STATUS_ACTIVE,
+		)
+		self.member_session = ActiveSession.objects.create(user=self.member, token='member-token', is_active=True)
 
 	def test_load_excel_rows_accepts_reordered_headers(self):
 		content = _build_xlsx([
@@ -233,3 +246,31 @@ class UserImportTests(TestCase):
 
 		self.assertEqual(response.status_code, 400)
 		self.assertIn('at least 8', response.json()['detail'])
+
+	def test_admin_can_delete_user(self):
+		user_to_delete = User.objects.create_user(
+			username='delete.me@example.com',
+			email='delete.me@example.com',
+			password='password123',
+		)
+		UserProfile.objects.create(
+			user=user_to_delete,
+			role=UserProfile.ROLE_USER,
+			status=UserProfile.STATUS_ACTIVE,
+		)
+
+		response = self.client.delete(
+			f'/api/users/{user_to_delete.id}/',
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(User.objects.filter(id=user_to_delete.id).exists())
+
+	def test_normal_user_cannot_list_users(self):
+		response = self.client.get(
+			'/api/users/',
+			HTTP_AUTHORIZATION=f'Bearer {self.member_session.token}',
+		)
+
+		self.assertEqual(response.status_code, 403)
