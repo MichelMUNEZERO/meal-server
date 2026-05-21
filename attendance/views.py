@@ -83,7 +83,10 @@ def generate_qr(request):
 	if not user:
 		return json_error('User not found', status=404)
 
-	payload = build_qr_payload(user, meal_type)
+	try:
+		payload = build_qr_payload(user, meal_type)
+	except ValueError as exc:
+		return json_error(str(exc), status=400)
 	return JsonResponse(payload)
 
 
