@@ -377,9 +377,81 @@ def _load_excel_rows(uploaded_file):
 def users_list(request):
 	if request.method == 'GET':
 		users = User.objects.select_related('profile', 'meal_plan').order_by('id')
+		
+		role_filter = request.GET.get('role')
+		status_filter = request.GET.get('status')
+		
+		if role_filter and role_filter in dict(UserProfile.ROLE_CHOICES):
+			users = users.filter(profile__role=role_filter)
+		
+		if status_filter and status_filter in dict(UserProfile.STATUS_CHOICES):
+			users = users.filter(profile__status=status_filter)
+		
 		return JsonResponse([serialize_user(user) for user in users], safe=False)
 
 	return json_error('Method not allowed', status=405)
+
+
+@csrf_exempt
+@require_auth(roles=[UserProfile.ROLE_ADMIN])
+def create_user(request):
+	if request.method != 'POST':
+		return json_error('Method not allowed', status=405)
+
+	data = parse_json_body(request)
+
+	name = str(data.get('name', '')).strip()
+	email = str(data.get('email', '')).strip().lower()
+	password = str(data.get('password', '')).strip()
+	phone = str(data.get('phone', '')).strip()
+	registration_number = str(data.get('registration_number', '')).strip()
+	role = data.get('role', UserProfile.ROLE_USER)
+	status = data.get('status', UserProfile.STATUS_ACTIVE)
+
+	if not name:
+		return json_error('Name is required')
+	if not email:
+		return json_error('Email is required')
+	try:
+		validate_email(email)
+	except ValidationError:
+		return json_error('Email is invalid')
+	if not password or len(password) < 8:
+		return json_error('Password must be at least 8 characters')
+	if role not in dict(UserProfile.ROLE_CHOICES):
+		return json_error('Invalid role', status=400)
+	if status not in dict(UserProfile.STATUS_CHOICES):
+		return json_error('Invalid status', status=400)
+
+	if User.objects.filter(email__iexact=email).exists():
+		return json_error('Email already exists', status=400)
+	if registration_number and UserProfile.objects.filter(registration_number=registration_number).exists():
+		return json_error('Registration number already exists', status=400)
+
+	with transaction.atomic():
+		first_name, last_name = _split_name(name)
+		user = User(
+			username=email,
+			email=email,
+			first_name=first_name,
+			last_name=last_name,
+			is_active=status == UserProfile.STATUS_ACTIVE,
+		)
+		user.set_password(password)
+		user.save()
+
+		profile = get_or_create_profile(user)
+		profile.role = role
+		profile.status = status
+		profile.phone = phone
+		if registration_number:
+			profile.registration_number = registration_number
+		profile.save()
+
+		meal_plan = get_or_create_meal_plan(user)
+		meal_plan.save()
+
+	return json_success(user=serialize_user(user, include_meal_plan=True))
 
 
 @csrf_exempt

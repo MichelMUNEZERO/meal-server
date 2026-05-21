@@ -12,6 +12,7 @@ urlpatterns = [
     path('session', views.session_view),
     path('session/', views.session_view),
     path('users/', views.users_list),
+    path('users/create/', views.create_user),
     path('users/bulk-import/', views.bulk_import_users),
     path('users/<int:user_id>/', views.user_detail),
     path('users/<int:user_id>/send-password-reset/', views.send_password_reset),
