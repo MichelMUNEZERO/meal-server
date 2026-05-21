@@ -72,6 +72,40 @@ This document describes the HTTP API for the Meal System project. It includes au
   - URL: `GET /api/users/`
   - Auth: Bearer token
   - Allowed roles: `admin`, `scanner`, `user`
+  - Query parameters:
+    - `?role=admin|scanner|user` — filter by role
+    - `?status=Active|Inactive` — filter by status
+  - Returns all users (or filtered by role/status if specified)
+
+- **Create user**
+  - URL: `POST /api/users/create/`
+  - Auth: Bearer token
+  - Allowed roles: `admin`
+  - Body (JSON):
+    ```json
+    {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "password": "securepassword123",
+      "phone": "0700000000",
+      "registration_number": "REG-001",
+      "role": "admin|scanner|user",
+      "status": "Active|Inactive"
+    }
+    ```
+  - Required fields: `name`, `email`, `password`
+  - Optional fields: `phone`, `registration_number`, `role` (defaults to `user`), `status` (defaults to `Active`)
+  - Success response (200):
+    ```json
+    {
+      "success": true,
+      "user": { ... user object ... }
+    }
+    ```
+  - Errors:
+    - `400` — missing/invalid fields, email already exists, password too short
+    - `401` — not authenticated
+    - `403` — not an admin
 
 - **Bulk import users**
   - URL: `POST /api/users/bulk-import/`
@@ -87,7 +121,11 @@ This document describes the HTTP API for the Meal System project. It includes au
   - URL: `GET /api/users/<user_id>/` (read), `PATCH /api/users/<user_id>/` (update)
   - Auth: Bearer token
   - Allowed roles for view: admin/scanner/user (view) — updates require `admin`
-  - PATCH body fields: `name`, `email`, `status`, `role` (when updating)
+  - PATCH body fields: `name`, `email`, `status` (`Active|Inactive`), `role` (`admin|scanner|user`)
+  - Example: Update a user to scanner role
+    ```json
+    { "role": "scanner", "status": "Active" }
+    ```
 
 - **Send password reset (admin)**
   - URL: `POST /api/users/<user_id>/send-password-reset/`
@@ -242,4 +280,151 @@ Generated from code in the repository (endpoints and behavior examined in `users
 If you want, I can also:
 - add an OpenAPI/Swagger spec file (YAML/JSON) for import into tools like Swagger UI or Postman, or
 - create a `scripts/` folder with example curl scripts for admin/scanner/user flows.
+
+
+---
+
+## Admin User Management Guide
+
+### Overview
+Administrators can create, modify, and manage users through the API. This includes creating new scanners, other admins, and regular users, as well as changing their roles and status.
+
+### Creating Users via API
+
+**Create a single user:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/users/create/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{
+    "name": "John Scanner",
+    "email": "john.scanner@example.com",
+    "password": "securepassword123",
+    "phone": "0700000001",
+    "registration_number": "SCAN-001",
+    "role": "scanner",
+    "status": "Active"
+  }'
+```
+
+**Create an admin user:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/users/create/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{
+    "name": "Jane Admin",
+    "email": "jane.admin@example.com",
+    "password": "securepw123",
+    "role": "admin",
+    "status": "Active"
+  }'
+```
+
+### Listing Users by Role
+
+**List all scanners:**
+```bash
+curl -X GET "http://127.0.0.1:8000/api/users/?role=scanner" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+**List all admins:**
+```bash
+curl -X GET "http://127.0.0.1:8000/api/users/?role=admin" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+**List all active users:**
+```bash
+curl -X GET "http://127.0.0.1:8000/api/users/?status=Active" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+### Changing User Roles
+
+**Promote a user to scanner:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/users/<user_id>/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "role": "scanner" }'
+```
+
+**Promote a user to admin:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/users/<user_id>/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "role": "admin" }'
+```
+
+**Demote a user:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/users/<user_id>/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "role": "user" }'
+```
+
+### Managing User Status
+
+**Deactivate a user:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/users/<user_id>/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "status": "Inactive" }'
+```
+
+**Reactivate a user:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/users/<user_id>/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "status": "Active" }'
+```
+
+### Command-Line User Management
+
+**Create a user via command line:**
+```bash
+python3 manage.py create_user john.doe@example.com "John Doe" --password "securepassword123" --phone "0700000001" --role scanner
+```
+
+**Create a user with generated password:**
+```bash
+python3 manage.py create_user jane.admin@example.com "Jane Admin" --role admin --generate-password
+```
+
+### Admin Helpers (Python)
+
+For programmatic user management in custom scripts or Django shell:
+
+```python
+from users.admin_helpers import create_admin_user, create_scanner_user, update_user_role, list_users_by_role
+
+# Create a scanner user
+user = create_scanner_user(
+    email='scanner@example.com',
+    name='John Scanner',
+    password='securepassword123',
+    phone='0700000001'
+)
+
+# Create an admin user
+admin = create_admin_user(
+    email='admin@example.com',
+    name='Jane Admin',
+    password='securepw123'
+)
+
+# Update a user's role
+update_user_role(user_id=5, new_role='admin')
+
+# List all scanners
+scanners = list_users_by_role('scanner')
+for scanner in scanners:
+    print(f"{scanner.email}: {scanner.get_full_name()}")
+```
 
