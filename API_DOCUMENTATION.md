@@ -197,6 +197,8 @@ This document describes the HTTP API for the Meal System project. It includes au
   - Lunch     12:00 - 17:30
   - Dinner    18:00 - 22:00
 - QR expiry constant: `QR_EXPIRY_SECONDS = 30` (seconds). QR older than this will be rejected.
+- A QR can be scanned only once for a given meal period. If the same QR is scanned again, the API will respond that the QR code has already been used.
+- The QR payload is regenerated on its normal refresh cycle, so users should generate a new QR when they need to scan again.
 
 
 **Signature details**
