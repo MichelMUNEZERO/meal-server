@@ -28,6 +28,8 @@ class UserProfile(models.Model):
 	source_id = models.PositiveIntegerField(null=True, blank=True, unique=True, db_index=True)
 	registration_number = models.CharField(max_length=64, null=True, blank=True, unique=True, db_index=True)
 	created_at = models.DateTimeField(auto_now_add=True)
+	is_temporary_password = models.BooleanField(default=False)
+	temporary_password_created_at = models.DateTimeField(null=True, blank=True)
 
 	def __str__(self):
 		return f'{self.user.username} profile'
