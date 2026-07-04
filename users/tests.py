@@ -1,12 +1,14 @@
 from io import BytesIO
 import zipfile
+from urllib.parse import parse_qs, urlparse
 
 from django.core import mail
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 
-from users.models import ActiveSession, UserProfile
+from meal_system.api_utils import create_password_reset_token
+from users.models import ActiveSession, PasswordResetToken, UserProfile
 from users.views import _load_excel_rows
 
 
@@ -292,3 +294,63 @@ class UserImportTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 403)
+
+	@override_settings(
+		EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+		FRONTEND_BASE_URL='https://frontend.example.com',
+	)
+	def test_password_reset_request_sends_email_with_frontend_link(self):
+		response = self.client.post(
+			'/api/auth/password-reset/',
+			{'email': 'member@example.com'},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(mail.outbox), 1)
+		email = mail.outbox[0]
+		self.assertEqual(email.to, ['member@example.com'])
+		self.assertIn('https://frontend.example.com/reset-password?token=', email.body)
+		parsed = urlparse(next(part for part in email.body.split() if 'reset-password?token=' in part))
+		token = parse_qs(parsed.query)['token'][0]
+		self.assertTrue(PasswordResetToken.objects.filter(token=token, user=self.member).exists())
+
+	@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+	def test_password_reset_confirm_requires_matching_passwords(self):
+		token = create_password_reset_token(self.member)
+		response = self.client.post(
+			'/api/auth/password-reset/confirm/',
+			{
+				'token': token.token,
+				'new_password': 'newpassword123',
+				'confirm_password': 'differentpassword123',
+			},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('match', response.json()['detail'])
+		self.member.refresh_from_db()
+		self.assertTrue(self.member.check_password('password123'))
+
+	@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+	def test_password_reset_confirm_updates_password(self):
+		old_session = ActiveSession.objects.create(user=self.member, token='old-reset-session', is_active=True)
+		token = create_password_reset_token(self.member)
+		response = self.client.post(
+			'/api/auth/password-reset/confirm/',
+			{
+				'token': token.token,
+				'new_password': 'newpassword123',
+				'confirm_password': 'newpassword123',
+			},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		token.refresh_from_db()
+		self.assertIsNotNone(token.used_at)
+		self.member.refresh_from_db()
+		self.assertTrue(self.member.check_password('newpassword123'))
+		old_session.refresh_from_db()
+		self.assertFalse(old_session.is_active)
