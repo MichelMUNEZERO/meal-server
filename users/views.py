@@ -50,6 +50,24 @@ def _issue_session(user):
 	return session
 
 
+def _build_password_reset_url(token):
+	return f"{settings.FRONTEND_BASE_URL.rstrip('/')}/reset-password?token={token.token}"
+
+
+def _send_password_reset_email(user, token):
+	reset_url = _build_password_reset_url(token)
+	full_name = user.get_full_name() or user.username
+	subject = 'Reset your Meal System password'
+	message = (
+		f'Hello {full_name},\n\n'
+		'We received a request to reset your Meal System password.\n\n'
+		f'Reset your password here: {reset_url}\n\n'
+		'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n'
+	)
+	send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+	return reset_url
+
+
 @csrf_exempt
 def login_view(request):
 	if request.method != 'POST':
@@ -111,7 +129,7 @@ def password_reset_request(request):
 
 	if user:
 		token = create_password_reset_token(user)
-		return json_success(message='If an account exists, a reset link was sent.', resetUrl=f'/reset-password?token={token.token}')
+		_send_password_reset_email(user, token)
 
 	return json_success(message='If an account exists, a reset link was sent.')
 
@@ -123,10 +141,14 @@ def password_reset_confirm(request):
 
 	data = parse_json_body(request)
 	token_value = str(data.get('token', '')).strip()
-	new_password = str(data.get('password', ''))
+	new_password = str(data.get('new_password') or data.get('password') or '')
+	confirm_password = str(data.get('confirm_password') or data.get('password_confirmation') or '')
 
 	if not token_value or len(new_password) < 8:
 		return json_error('Invalid token or password too short')
+
+	if confirm_password and confirm_password != new_password:
+		return json_error('Passwords do not match')
 
 	token = PasswordResetToken.objects.select_related('user').filter(token=token_value, used_at__isnull=True).first()
 	if not token:
@@ -450,7 +472,7 @@ def _load_excel_rows(uploaded_file):
 
 
 def _send_onboarding_email(user, temporary_password, token):
-	reset_url = f'{settings.FRONTEND_BASE_URL}/reset-password?token={token.token}'
+	reset_url = _build_password_reset_url(token)
 	full_name = user.get_full_name() or user.username
 	subject = 'Your Meal System account credentials'
 	message = (
@@ -643,7 +665,8 @@ def send_password_reset(request, user_id):
 		return json_error('User not found', status=404)
 
 	token = create_password_reset_token(user)
-	return json_success(email=user.email, resetUrl=f'/reset-password?token={token.token}')
+	_send_password_reset_email(user, token)
+	return json_success(email=user.email)
 
 
 @csrf_exempt
