@@ -48,11 +48,12 @@ This document describes the HTTP API for the Meal System project. It includes au
 - **Password reset request**
   - URL: `POST /api/auth/password-reset/`
   - Body: `{ "email": "user@example.com" }`
-  - Success: `200` with a safe message (link generation handled server-side)
+  - Success: `200` with a safe message; the server emails a secure frontend link to `/reset-password?token=...`
 
 - **Password reset confirm**
   - URL: `POST /api/auth/password-reset/confirm/`
-  - Body: `{ "token": "...", "password":"newpass" }`
+  - Body: `{ "token": "...", "new_password": "newpass", "confirm_password": "newpass" }`
+  - `password` is also accepted as a fallback for older clients
 
 - **Change password (authenticated)**
   - URL: `POST /api/auth/change-password/`
