@@ -118,7 +118,7 @@ This document describes the HTTP API for the Meal System project. It includes au
   - The importer can also recover from extra title rows or slightly messy layouts by inferring the correct columns before creating accounts.
   - Required fields: `name`, `email`, `phone`, and `registration_number`.
   - If any required field is missing in a row, that row is skipped with a validation error.
-  - For each created account, the system generates a temporary password, creates a reset token, and sends the credentials to the user email address.
+  - For each created account, the system generates a temporary password, creates a reset token, and emails the user both the temporary login credentials and a password-reset link to the frontend reset page.
 
 - **User detail**
   - URL: `GET /api/users/<user_id>/` (read), `PATCH /api/users/<user_id>/` (update)
