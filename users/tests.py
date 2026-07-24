@@ -162,6 +162,34 @@ class UserImportTests(TestCase):
 		self.assertEqual(user.profile.phone, '0700000000')
 		self.assertEqual(user.profile.registration_number, 'REG-123')
 
+	@override_settings(
+		EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+		FRONTEND_BASE_URL='http://localhost:5173',
+	)
+	def test_bulk_import_email_includes_temporary_password_and_reset_link(self):
+		content = _build_xlsx([
+			['Member Name', 'Email Address', 'Contact Number', 'Reg #'],
+			['Jane Doe', 'jane.doe@example.com', '0700000000', 'REG-123'],
+		])
+		file_obj = SimpleUploadedFile(
+			'import.xlsx',
+			content,
+			content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		)
+
+		response = self.client.post(
+			'/api/users/bulk-import/',
+			{'file': file_obj},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(mail.outbox), 1)
+		body = mail.outbox[0].body
+		self.assertIn('Temporary password:', body)
+		self.assertIn('http://localhost:5173/reset-password?token=', body)
+		self.assertIn('Please log in and change your password after first access.', body)
+
 	def test_create_user_as_admin(self):
 		response = self.client.post(
 			'/api/users/create/',
