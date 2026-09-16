@@ -27,6 +27,8 @@ class UserProfile(models.Model):
 	phone = models.CharField(max_length=32, blank=True, default='')
 	source_id = models.PositiveIntegerField(null=True, blank=True, unique=True, db_index=True)
 	registration_number = models.CharField(max_length=64, null=True, blank=True, unique=True, db_index=True)
+	year_of_study = models.CharField(max_length=32, blank=True, default='')
+	event_name = models.CharField(max_length=255, blank=True, default='')
 	created_at = models.DateTimeField(auto_now_add=True)
 	is_temporary_password = models.BooleanField(default=False)
 	temporary_password_created_at = models.DateTimeField(null=True, blank=True)
