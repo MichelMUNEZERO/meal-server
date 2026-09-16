@@ -90,12 +90,15 @@ This document describes the HTTP API for the Meal System project. It includes au
       "password": "securepassword123",
       "phone": "0700000000",
       "registration_number": "REG-001",
+	  "year_of_study": "Year 2",
+	  "event_name": "Orientation 2026",
       "role": "admin|scanner|user",
       "status": "Active|Inactive"
     }
     ```
-  - Required fields: `name`, `email`, `password`
-  - Optional fields: `phone`, `registration_number`, `role` (defaults to `user`), `status` (defaults to `Active`)
+  - Required fields: `name`, `email`; `password` is required for `admin` and `scanner` roles and must be at least 8 characters.
+  - Optional fields: `password` for regular users, `phone`, `registration_number`, `year_of_study`, `event_name`, `role` (defaults to `user`), `status` (defaults to `Active`)
+  - Regular users created without a password have an unusable password until an administrator sends a password reset.
   - Success response (200):
     ```json
     {
@@ -127,7 +130,7 @@ This document describes the HTTP API for the Meal System project. It includes au
   - PATCH body fields: `name`, `email`, `status` (`Active|Inactive`), `role` (`admin|scanner|user`)
   - Example: Update a user to scanner role
     ```json
-    { "role": "scanner", "status": "Active" }
+    { "role": "scanner", "status": "Active", "year_of_study": "Year 2", "event_name": "Orientation 2026" }
     ```
 
 - **Send password reset (admin)**
