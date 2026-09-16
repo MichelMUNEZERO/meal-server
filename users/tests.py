@@ -224,6 +224,44 @@ class UserImportTests(TestCase):
 		self.assertEqual(user.profile.phone, '0700000001')
 		self.assertEqual(user.profile.registration_number, 'SCAN-001')
 
+	def test_create_student_without_password_persists_student_fields(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'student@example.com',
+				'name': 'Student User',
+				'phone': '0700000002',
+				'registration_number': 'STU-001',
+				'year_of_study': 'Year 2',
+				'event_name': 'Orientation 2026',
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.get(email='student@example.com')
+		self.assertFalse(user.has_usable_password())
+		self.assertEqual(user.profile.year_of_study, 'Year 2')
+		self.assertEqual(user.profile.event_name, 'Orientation 2026')
+		self.assertEqual(response.json()['user']['yearOfStudy'], 'Year 2')
+		self.assertEqual(response.json()['user']['eventName'], 'Orientation 2026')
+
+	def test_create_system_user_requires_password(self):
+		response = self.client.post(
+			'/api/users/create/',
+			{
+				'email': 'scanner-without-password@example.com',
+				'name': 'Scanner User',
+				'role': UserProfile.ROLE_SCANNER,
+			},
+			HTTP_AUTHORIZATION=f'Bearer {self.session.token}',
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('at least 8', response.json()['detail'])
+
 	def test_create_admin_user_as_admin(self):
 		response = self.client.post(
 			'/api/users/create/',
