@@ -555,6 +555,8 @@ def create_user(request):
 	password = str(data.get('password', '')).strip()
 	phone = str(data.get('phone', '')).strip()
 	registration_number = str(data.get('registration_number', '')).strip()
+	year_of_study = str(data.get('year_of_study', '')).strip()
+	event_name = str(data.get('event_name', '')).strip()
 	role = data.get('role', UserProfile.ROLE_USER)
 	status = data.get('status', UserProfile.STATUS_ACTIVE)
 
@@ -566,7 +568,7 @@ def create_user(request):
 		validate_email(email)
 	except ValidationError:
 		return json_error('Email is invalid')
-	if not password or len(password) < 8:
+	if role != UserProfile.ROLE_USER and (not password or len(password) < 8):
 		return json_error('Password must be at least 8 characters')
 	if role not in dict(UserProfile.ROLE_CHOICES):
 		return json_error('Invalid role', status=400)
@@ -587,13 +589,18 @@ def create_user(request):
 			last_name=last_name,
 			is_active=status == UserProfile.STATUS_ACTIVE,
 		)
-		user.set_password(password)
+		if password:
+			user.set_password(password)
+		else:
+			user.set_unusable_password()
 		user.save()
 
 		profile = get_or_create_profile(user)
 		profile.role = role
 		profile.status = status
 		profile.phone = phone
+		profile.year_of_study = year_of_study
+		profile.event_name = event_name
 		if registration_number:
 			profile.registration_number = registration_number
 		profile.save()
@@ -622,6 +629,8 @@ def user_detail(request, user_id):
 		email = str(data.get('email', '')).strip().lower()
 		status = data.get('status')
 		role = data.get('role')
+		year_of_study = str(data.get('year_of_study', '')).strip()
+		event_name = str(data.get('event_name', '')).strip()
 
 		if name:
 			parts = name.split(' ', 1)
@@ -638,6 +647,11 @@ def user_detail(request, user_id):
 
 		if role in dict(UserProfile.ROLE_CHOICES):
 			profile.role = role
+
+		if 'year_of_study' in data:
+			profile.year_of_study = year_of_study
+		if 'event_name' in data:
+			profile.event_name = event_name
 
 		with transaction.atomic():
 			user.save()
