@@ -16,6 +16,7 @@ from users.models import ActiveSession, PasswordResetToken, UserProfile
 
 
 QR_EXPIRY_SECONDS = 30
+SESSION_DURATION = timedelta(hours=5)
 
 MEAL_WINDOWS = [
     {'type': 'Breakfast', 'start': (6, 0), 'end': (11, 50)},
@@ -238,7 +239,14 @@ def authenticate_request(request):
     except ActiveSession.DoesNotExist:
         return None, None
 
-    session.last_seen = timezone.now()
+    now = timezone.now()
+    expires_at = session.expires_at or session.created_at + SESSION_DURATION
+    if expires_at <= now:
+        session.is_active = False
+        session.save(update_fields=['is_active'])
+        return None, None
+
+    session.last_seen = now
     session.save(update_fields=['last_seen'])
     return session.user, session
 
