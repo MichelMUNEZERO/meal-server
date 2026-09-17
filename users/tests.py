@@ -1,11 +1,14 @@
 from io import BytesIO
 import zipfile
+import json
+from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 from django.core import mail
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone
 
 from meal_system.api_utils import create_password_reset_token
 from users.models import ActiveSession, PasswordResetToken, UserProfile
@@ -420,3 +423,57 @@ class UserImportTests(TestCase):
 		self.assertTrue(self.member.check_password('newpassword123'))
 		old_session.refresh_from_db()
 		self.assertFalse(old_session.is_active)
+
+
+class SessionAuthenticationTests(TestCase):
+	def setUp(self):
+		self.client = Client()
+		self.user = User.objects.create_user(
+			username='session@example.com',
+			email='session@example.com',
+			password='password123',
+		)
+		UserProfile.objects.create(user=self.user, status=UserProfile.STATUS_ACTIVE)
+
+	def _login(self):
+		return self.client.post(
+			'/api/auth/login/',
+			data=json.dumps({'email': self.user.email, 'password': 'password123'}),
+			content_type='application/json',
+		)
+
+	def test_login_replaces_previous_active_session(self):
+		first_response = self._login()
+		second_response = self._login()
+
+		self.assertEqual(first_response.status_code, 200)
+		self.assertEqual(second_response.status_code, 200)
+		first_token = first_response.json()['token']
+		second_token = second_response.json()['token']
+		self.assertNotEqual(first_token, second_token)
+
+		old_response = self.client.get(
+			'/api/session/', HTTP_AUTHORIZATION=f'Bearer {first_token}'
+		)
+		current_response = self.client.get(
+			'/api/session/', HTTP_AUTHORIZATION=f'Bearer {second_token}'
+		)
+
+		self.assertEqual(old_response.status_code, 401)
+		self.assertEqual(current_response.status_code, 200)
+		self.assertEqual(ActiveSession.objects.filter(user=self.user, is_active=True).count(), 1)
+
+	def test_expired_session_is_rejected_and_deactivated(self):
+		session = ActiveSession.objects.create(
+			user=self.user,
+			token='expired-token',
+			expires_at=timezone.now() - timedelta(seconds=1),
+		)
+
+		response = self.client.get(
+			'/api/session/', HTTP_AUTHORIZATION=f'Bearer {session.token}'
+		)
+
+		self.assertEqual(response.status_code, 401)
+		session.refresh_from_db()
+		self.assertFalse(session.is_active)
