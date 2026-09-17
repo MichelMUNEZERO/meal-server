@@ -44,6 +44,7 @@ class ActiveSession(models.Model):
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	last_seen = models.DateTimeField(auto_now=True)
+	expires_at = models.DateTimeField(null=True, blank=True)
 
 	class Meta:
 		ordering = ['-last_seen']
