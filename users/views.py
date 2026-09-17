@@ -5,7 +5,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import re
 import zipfile
@@ -39,14 +39,17 @@ User = get_user_model()
 
 def _issue_session(user):
 	token = secrets.token_urlsafe(40)
-	session, _ = ActiveSession.objects.update_or_create(
-		user=user,
-		defaults={
-			'token': token,
-			'session_id': '',
-			'is_active': True,
-		},
-	)
+	now = timezone.now()
+	with transaction.atomic():
+		locked_user = User.objects.select_for_update().get(pk=user.pk)
+		ActiveSession.objects.filter(user=locked_user, is_active=True).update(is_active=False)
+		session = ActiveSession.objects.create(
+			user=locked_user,
+			token=token,
+			session_id='',
+			is_active=True,
+			expires_at=now + timedelta(hours=5),
+		)
 	return session
 
 
@@ -102,7 +105,11 @@ def login_view(request):
 
 	session = _issue_session(user)
 	logger.info('Login success: user_id=%s session_created=%s', user.id, bool(session))
-	return json_success(user=serialize_user(user, include_meal_plan=True), token=session.token)
+	return json_success(
+		user=serialize_user(user, include_meal_plan=True),
+		token=session.token,
+		expiresAt=session.expires_at.isoformat(),
+	)
 
 
 @csrf_exempt
