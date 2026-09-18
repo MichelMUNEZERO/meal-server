@@ -6,6 +6,8 @@ This document describes the HTTP API for the Meal System project. It includes au
 
 **Auth scheme:** Bearer token. Obtain a token by POSTing to `/api/auth/login/` and include it in `Authorization: Bearer <token>` for protected endpoints.
 
+**Session expiration:** Login sessions expire three hours after they are issued. After expiration, protected endpoints return `401 Authentication required` and the session is deactivated server-side. Clients must discard the token and send the user to the login page so they can authenticate again.
+
 **Roles:**
 - `user` — regular member
 - `admin` — administrator (can manage users and view all meal plans)
@@ -34,7 +36,8 @@ This document describes the HTTP API for the Meal System project. It includes au
     {
       "success": true,
       "user": { "id": 2, "name": "Michel", "email": "michel@example.com", "role": "user", "plan": "B/L" },
-      "token": "<token>"
+      "token": "<token>",
+      "expiresAt": "2026-09-18T15:00:00+00:00"
     }
     ```
   - Notes: must use `POST`. Visiting this URL in the browser (GET) returns `405 Method not allowed`.
