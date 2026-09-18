@@ -463,6 +463,16 @@ class SessionAuthenticationTests(TestCase):
 		self.assertEqual(current_response.status_code, 200)
 		self.assertEqual(ActiveSession.objects.filter(user=self.user, is_active=True).count(), 1)
 
+	def test_login_session_expires_after_three_hours(self):
+		before_login = timezone.now()
+		response = self._login()
+		after_login = timezone.now()
+
+		self.assertEqual(response.status_code, 200)
+		session = ActiveSession.objects.get(token=response.json()['token'])
+		self.assertGreaterEqual(session.expires_at, before_login + timedelta(hours=3))
+		self.assertLessEqual(session.expires_at, after_login + timedelta(hours=3))
+
 	def test_expired_session_is_rejected_and_deactivated(self):
 		session = ActiveSession.objects.create(
 			user=self.user,
