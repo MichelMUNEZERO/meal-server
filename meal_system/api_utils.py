@@ -16,7 +16,7 @@ from users.models import ActiveSession, PasswordResetToken, UserProfile
 
 
 QR_EXPIRY_SECONDS = 30
-SESSION_DURATION = timedelta(hours=5)
+SESSION_DURATION = timedelta(hours=3)
 
 MEAL_WINDOWS = [
     {'type': 'Breakfast', 'start': (6, 0), 'end': (11, 50)},
