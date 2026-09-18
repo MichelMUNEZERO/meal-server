@@ -25,6 +25,7 @@ from meal_system.api_utils import (
 	json_success,
 	parse_json_body,
 	require_auth,
+	SESSION_DURATION,
 	serialize_user,
 )
 from users.models import ActiveSession, PasswordResetToken, UserProfile
@@ -48,7 +49,7 @@ def _issue_session(user):
 			token=token,
 			session_id='',
 			is_active=True,
-			expires_at=now + timedelta(hours=5),
+			expires_at=now + SESSION_DURATION,
 		)
 	return session
 
