@@ -85,13 +85,18 @@ def serialize_user(user, include_meal_plan=False):
     profile = get_or_create_profile(user)
     meal_plan = get_or_create_meal_plan(user)
 
+    created_at = profile.created_at or user.date_joined
+    registration_number = profile.registration_number or ''
+
     data = {
         'id': user.id,
         'name': user.get_full_name() or user.username,
         'email': user.email,
         'phone': profile.phone,
-        'registrationNumber': profile.registration_number,
-        'createdAt': profile.created_at.isoformat(),
+        'registrationNumber': registration_number,
+        'registration_number': registration_number,
+        'createdAt': created_at.isoformat() if created_at else None,
+        'created_at': created_at.isoformat() if created_at else None,
         'yearOfStudy': profile.year_of_study,
         'eventName': profile.event_name,
         'sourceId': profile.source_id,
