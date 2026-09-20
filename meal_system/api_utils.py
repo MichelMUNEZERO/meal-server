@@ -91,6 +91,7 @@ def serialize_user(user, include_meal_plan=False):
         'email': user.email,
         'phone': profile.phone,
         'registrationNumber': profile.registration_number,
+        'createdAt': profile.created_at.isoformat(),
         'yearOfStudy': profile.year_of_study,
         'eventName': profile.event_name,
         'sourceId': profile.source_id,
