@@ -82,6 +82,8 @@ def generate_qr(request):
 	user = User.objects.filter(pk=user_id).first()
 	if not user:
 		return json_error('User not found', status=404)
+	if getattr(user, 'profile', None) and user.profile.role != UserProfile.ROLE_USER:
+		return json_error('QR codes are only available for customers', status=403)
 
 	try:
 		payload = build_qr_payload(user, meal_type)
@@ -105,6 +107,8 @@ def verify_scan(request):
 		return json_error(str(exc), status=400)
 
 	user = verified['user']
+	if getattr(user, 'profile', None) and user.profile.role != UserProfile.ROLE_USER:
+		return json_error('Only customers can be scanned for meals', status=403)
 	payload = verified['payload']
 	meal_type = verified['meal_type']
 	today = timezone.localdate()
