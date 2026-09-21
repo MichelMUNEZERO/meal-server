@@ -6,6 +6,7 @@ Provides helper functions for managing users, roles, and permissions.
 from django.contrib.auth.models import User
 from users.models import UserProfile, ActiveSession
 from meal_system.api_utils import get_or_create_profile, get_or_create_meal_plan
+from meals.models import MealPlan
 from django.db import transaction
 
 
@@ -84,7 +85,8 @@ def create_user(email, name, password, phone='', registration_number='', role=Us
 		profile.save()
 
 		meal_plan = get_or_create_meal_plan(user)
-		meal_plan.save()
+		if meal_plan:
+			meal_plan.save()
 
 	return user
 
@@ -111,6 +113,10 @@ def update_user_role(user_id, new_role):
 	profile = get_or_create_profile(user)
 	profile.role = new_role
 	profile.save()
+	if new_role == UserProfile.ROLE_USER:
+		get_or_create_meal_plan(user)
+	else:
+		MealPlan.objects.filter(user=user).delete()
 	return profile
 
 
