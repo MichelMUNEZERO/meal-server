@@ -58,6 +58,8 @@ def get_or_create_profile(user):
 
 
 def get_or_create_meal_plan(user):
+    if get_user_role(user) != UserProfile.ROLE_USER:
+        return None
     meal_plan, _ = MealPlan.objects.get_or_create(user=user)
     return meal_plan
 
@@ -101,11 +103,12 @@ def serialize_user(user, include_meal_plan=False):
         'eventName': profile.event_name,
         'sourceId': profile.source_id,
         'role': profile.role,
+        'userType': 'customer' if profile.role == UserProfile.ROLE_USER else 'staff',
         'status': profile.status,
-        'plan': meal_plan_summary(meal_plan),
+        'plan': meal_plan_summary(meal_plan) if meal_plan else None,
     }
 
-    if include_meal_plan:
+    if include_meal_plan and meal_plan:
         data['mealPlan'] = serialize_meal_plan(meal_plan)
 
     return data
