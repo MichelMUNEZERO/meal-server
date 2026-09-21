@@ -23,6 +23,8 @@ def user_meal_plan(request, user_id):
 	user = User.objects.filter(pk=user_id).first()
 	if not user:
 		return json_error('User not found', status=404)
+	if getattr(user, 'profile', None) and user.profile.role != UserProfile.ROLE_USER:
+		return json_error('Meal plans are only available for customers', status=403)
 
 	requester_profile = getattr(request.api_user, 'profile', None)
 	requester_role = requester_profile.role if requester_profile else UserProfile.ROLE_USER
@@ -68,7 +70,8 @@ def all_meal_plans(request):
 		return json_error('Method not allowed', status=405)
 
 	plans = {}
-	for user in User.objects.select_related('meal_plan').order_by('id'):
+	for user in User.objects.filter(profile__role=UserProfile.ROLE_USER).select_related('meal_plan').order_by('id'):
 		meal_plan = get_or_create_meal_plan(user)
-		plans[str(user.id)] = serialize_meal_plan(meal_plan)
+		if meal_plan:
+			plans[str(user.id)] = serialize_meal_plan(meal_plan)
 	return JsonResponse(plans)
