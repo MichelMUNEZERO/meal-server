@@ -28,6 +28,7 @@ from meal_system.api_utils import (
 	SESSION_DURATION,
 	serialize_user,
 )
+from meals.models import MealPlan
 from users.models import ActiveSession, PasswordResetToken, UserProfile
 
 import logging
@@ -576,7 +577,7 @@ def create_user(request):
 		validate_email(email)
 	except ValidationError:
 		return json_error('Email is invalid')
-	if role != UserProfile.ROLE_USER and (not password or len(password) < 8):
+	if (role != UserProfile.ROLE_USER and not password) or (password and len(password) < 8):
 		return json_error('Password must be at least 8 characters')
 	if role not in dict(UserProfile.ROLE_CHOICES):
 		return json_error('Invalid role', status=400)
@@ -614,7 +615,8 @@ def create_user(request):
 		profile.save()
 
 		meal_plan = get_or_create_meal_plan(user)
-		meal_plan.save()
+		if meal_plan:
+			meal_plan.save()
 
 	return json_success(user=serialize_user(user, include_meal_plan=True))
 
@@ -664,6 +666,10 @@ def user_detail(request, user_id):
 		with transaction.atomic():
 			user.save()
 			profile.save()
+			if profile.role == UserProfile.ROLE_USER:
+				get_or_create_meal_plan(user)
+			else:
+				MealPlan.objects.filter(user=user).delete()
 
 		return json_success(user=serialize_user(user, include_meal_plan=True))
 
