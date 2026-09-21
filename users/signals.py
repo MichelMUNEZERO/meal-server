@@ -108,8 +108,6 @@ def seed_demo_data(sender, **kwargs):
 
     meal_plans = {
         member.id: dict(breakfast=True, lunch=True, dinner=False, days_remaining=15, total_days=30, valid_until=datetime(2026, 5, 30).date()),
-        admin.id: dict(breakfast=False, lunch=False, dinner=False, days_remaining=0, total_days=30, valid_until=None),
-        scanner.id: dict(breakfast=False, lunch=False, dinner=False, days_remaining=0, total_days=30, valid_until=None),
         john.id: dict(breakfast=True, lunch=True, dinner=True, days_remaining=22, total_days=30, valid_until=datetime(2026, 6, 15).date()),
         jane.id: dict(breakfast=False, lunch=False, dinner=False, days_remaining=0, total_days=30, valid_until=None),
     }
