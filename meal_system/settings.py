@@ -42,6 +42,11 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', DEFAULT_FROM_EMAIL)
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('1', 'true', 'yes', 'on')
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('1', 'true', 'yes', 'on')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
+EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'smtp').lower()
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+RESEND_API_URL = os.getenv('RESEND_API_URL', 'https://api.resend.com/emails')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL)
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://tracker-meals.vercel.app/')
 
 
