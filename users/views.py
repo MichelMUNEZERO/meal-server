@@ -138,7 +138,11 @@ def password_reset_request(request):
 
 	if user:
 		token = create_password_reset_token(user)
-		_send_password_reset_email(user, token)
+		try:
+			_send_password_reset_email(user, token)
+		except Exception:
+			logger.exception('Password reset email delivery failed for user_id=%s', user.id)
+			return json_error('The reset email could not be sent. Please try again later.', status=502)
 
 	return json_success(message='If an account exists, a reset link was sent.')
 
