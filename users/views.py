@@ -1,4 +1,7 @@
+import json
 import secrets
+import urllib.error
+import urllib.request
 
 from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
@@ -69,7 +72,39 @@ def _send_password_reset_email(user, token):
 		f'Reset your password here: {reset_url}\n\n'
 		'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n'
 	)
-	send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+	if settings.EMAIL_PROVIDER == 'resend':
+		if not settings.RESEND_API_KEY:
+			raise RuntimeError('RESEND_API_KEY is not configured')
+		payload = json.dumps({
+			'from': settings.RESEND_FROM_EMAIL,
+			'to': [user.email],
+			'subject': subject,
+			'text': message,
+		}).encode('utf-8')
+		request = urllib.request.Request(
+			settings.RESEND_API_URL,
+			data=payload,
+			headers={
+				'Authorization': f'Bearer {settings.RESEND_API_KEY}',
+				'Content-Type': 'application/json',
+			},
+			method='POST',
+		)
+		try:
+			with urllib.request.urlopen(request, timeout=settings.EMAIL_TIMEOUT) as response:
+				if response.status < 200 or response.status >= 300:
+					raise RuntimeError(f'Resend returned HTTP {response.status}')
+		except urllib.error.HTTPError as error:
+			detail = error.read().decode('utf-8', errors='replace')
+			raise RuntimeError(f'Resend returned HTTP {error.code}: {detail}') from error
+	else:
+		send_mail(
+			subject,
+			message,
+			settings.DEFAULT_FROM_EMAIL,
+			[user.email],
+			fail_silently=False,
+		)
 	return reset_url
 
 
@@ -134,15 +169,15 @@ def password_reset_request(request):
 
 	data = parse_json_body(request)
 	email = str(data.get('email', '')).strip().lower()
-	user = User.objects.filter(username__iexact=email).first() or User.objects.filter(email__iexact=email).first()
+	try:
+		user = User.objects.filter(username__iexact=email).first() or User.objects.filter(email__iexact=email).first()
 
-	if user:
-		token = create_password_reset_token(user)
-		try:
+		if user:
+			token = create_password_reset_token(user)
 			_send_password_reset_email(user, token)
-		except Exception:
-			logger.exception('Password reset email delivery failed for user_id=%s', user.id)
-			return json_error('The reset email could not be sent. Please try again later.', status=502)
+	except Exception:
+		logger.exception('Password reset request failed for email=%s', email)
+		return json_error('The reset email could not be sent. Please try again later.', status=502)
 
 	return json_success(message='If an account exists, a reset link was sent.')
 
