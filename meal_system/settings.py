@@ -43,11 +43,20 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('1', 'true', 'yes', 'on')
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('1', 'true', 'yes', 'on')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
-EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'smtp').lower()
+EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'resend').lower()
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
 RESEND_API_URL = os.getenv('RESEND_API_URL', 'https://api.resend.com/emails')
-RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', DEFAULT_FROM_EMAIL)
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'Resend <onboarding@resend.dev>')
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://tracker-meals.vercel.app/')
+
+CORS_ALLOWED_ORIGINS = {
+    origin.strip().rstrip('/')
+    for origin in os.getenv(
+        'CORS_ALLOWED_ORIGINS',
+        'https://tracker-meals.vercel.app,https://tracker-meals-git-main-michel-munezeros-projects.vercel.app,http://localhost:5173,http://localhost:4173',
+    ).split(',')
+    if origin.strip()
+}
 
 
 # Application definition
