@@ -4,6 +4,8 @@ This document describes the HTTP API for the Meal System project. It includes au
 
 **Base URL:** `http://127.0.0.1:8000/`
 
+**Password-reset email deployment:** Set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` to a Render secret, and `RESEND_FROM_EMAIL` to a sender verified in Resend. The default `onboarding@resend.dev` sender is restricted by Resend and is not suitable for sending to arbitrary users. If Resend is not configured, the app uses Django's configured email backend (`EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and related SMTP settings).
+
 **Auth scheme:** Bearer token. Obtain a token by POSTing to `/api/auth/login/` and include it in `Authorization: Bearer <token>` for protected endpoints.
 
 **Session expiration:** Login sessions expire three hours after they are issued. After expiration, protected endpoints return `401 Authentication required` and the session is deactivated server-side. Clients must discard the token and send the user to the login page so they can authenticate again.
