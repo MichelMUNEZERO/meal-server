@@ -72,9 +72,7 @@ def _send_password_reset_email(user, token):
 		f'Reset your password here: {reset_url}\n\n'
 		'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n'
 	)
-	if settings.EMAIL_PROVIDER == 'resend':
-		if not settings.RESEND_API_KEY:
-			raise RuntimeError('RESEND_API_KEY is not configured')
+	if settings.EMAIL_PROVIDER == 'resend' and settings.RESEND_API_KEY:
 		payload = json.dumps({
 			'from': settings.RESEND_FROM_EMAIL,
 			'to': [user.email],
