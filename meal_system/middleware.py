@@ -30,6 +30,7 @@ class CorsMiddleware:
         origin = request.headers.get('Origin', '').rstrip('/')
         if origin in getattr(settings, 'CORS_ALLOWED_ORIGINS', set()):
             response['Access-Control-Allow-Origin'] = origin
+            response['Access-Control-Allow-Credentials'] = 'true'
             response['Vary'] = 'Origin'
         response['Access-Control-Allow-Headers'] = self.allow_headers
         response['Access-Control-Allow-Methods'] = self.allow_methods
