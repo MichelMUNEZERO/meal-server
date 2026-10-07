@@ -62,20 +62,11 @@ def _build_password_reset_url(token):
 	return f"{settings.FRONTEND_BASE_URL.rstrip('/')}/reset-password?token={token.token}"
 
 
-def _send_password_reset_email(user, token):
-	reset_url = _build_password_reset_url(token)
-	full_name = user.get_full_name() or user.username
-	subject = 'Reset your Meal System password'
-	message = (
-		f'Hello {full_name},\n\n'
-		'We received a request to reset your Meal System password.\n\n'
-		f'Reset your password here: {reset_url}\n\n'
-		'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n'
-	)
+def _send_email(subject, message, recipient):
 	if settings.EMAIL_PROVIDER == 'resend' and settings.RESEND_API_KEY:
 		payload = json.dumps({
 			'from': settings.RESEND_FROM_EMAIL,
-			'to': [user.email],
+			'to': [recipient],
 			'subject': subject,
 			'text': message,
 		}).encode('utf-8')
@@ -100,9 +91,22 @@ def _send_password_reset_email(user, token):
 			subject,
 			message,
 			settings.DEFAULT_FROM_EMAIL,
-			[user.email],
+			[recipient],
 			fail_silently=False,
 		)
+
+
+def _send_password_reset_email(user, token):
+	reset_url = _build_password_reset_url(token)
+	full_name = user.get_full_name() or user.username
+	subject = 'Reset your Meal System password'
+	message = (
+		f'Hello {full_name},\n\n'
+		'We received a request to reset your Meal System password.\n\n'
+		f'Reset your password here: {reset_url}\n\n'
+		'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n'
+	)
+	_send_email(subject, message, user.email)
 	return reset_url
 
 
@@ -529,7 +533,7 @@ def _send_onboarding_email(user, temporary_password, token):
 		f'Reset your password here: {reset_url}\n\n'
 		'Please log in and change your password after first access.\n'
 	)
-	send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+	_send_email(subject, message, user.email)
 
 
 XLSX_NS = {
