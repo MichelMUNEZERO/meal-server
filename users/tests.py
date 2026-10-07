@@ -3,6 +3,7 @@ import zipfile
 import json
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from django.core import mail
 from django.contrib.auth.models import User
@@ -12,7 +13,7 @@ from django.utils import timezone
 
 from meal_system.api_utils import create_password_reset_token
 from users.models import ActiveSession, PasswordResetToken, UserProfile
-from users.views import _load_excel_rows
+from users.views import _load_excel_rows, _send_onboarding_email
 
 
 def _column_name(index):
@@ -78,6 +79,32 @@ def _build_xlsx(rows):
 		archive.writestr('xl/_rels/workbook.xml.rels', rels)
 		archive.writestr('xl/worksheets/sheet1.xml', sheet)
 	return buffer.getvalue()
+
+
+class EmailProviderTests(TestCase):
+	@override_settings(
+		EMAIL_PROVIDER='resend',
+		RESEND_API_KEY='re_test_key',
+		RESEND_FROM_EMAIL='Meal System <onboarding@example.com>',
+	)
+	@patch('users.views.urllib.request.urlopen')
+	def test_onboarding_email_uses_resend_when_configured(self, urlopen):
+		user = User.objects.create_user(
+			username='jane.doe@example.com',
+			email='jane.doe@example.com',
+			first_name='Jane',
+			last_name='Doe',
+		)
+		token = create_password_reset_token(user)
+		urlopen.return_value.__enter__.return_value.status = 200
+
+		_send_onboarding_email(user, 'temporary-password', token)
+
+		request = urlopen.call_args.args[0]
+		payload = json.loads(request.data.decode('utf-8'))
+		self.assertEqual(request.full_url, 'https://api.resend.com/emails')
+		self.assertEqual(payload['to'], ['jane.doe@example.com'])
+		self.assertIn('Temporary password: temporary-password', payload['text'])
 
 
 class UserImportTests(TestCase):
