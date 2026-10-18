@@ -47,8 +47,8 @@ EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'resend').lower()
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
 RESEND_API_URL = os.getenv('RESEND_API_URL', 'https://api.resend.com/emails')
 RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'Resend <onboarding@resend.dev>')
-XAI_API_KEY = os.getenv('XAI_API_KEY', '')
-XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4.7')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://tracker-meals.vercel.app/')
 
 CORS_ALLOWED_ORIGINS = {
