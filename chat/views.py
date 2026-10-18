@@ -39,9 +39,9 @@ def chat_view(request):
     if request.method != 'POST':
         return json_error('Method not allowed', status=405)
 
-    api_key = getattr(settings, 'XAI_API_KEY', '')
+    api_key = getattr(settings, 'GROQ_API_KEY', '')
     if not api_key:
-        return json_error('The Grok assistant is not configured yet', status=503)
+        return json_error('The Groq assistant is not configured yet', status=503)
 
     data = parse_json_body(request)
     incoming_messages = data.get('messages', [])
@@ -58,14 +58,14 @@ def chat_view(request):
         messages.append({'role': message['role'], 'content': content})
 
     payload = json.dumps({
-        'model': settings.XAI_MODEL,
-        'input': [
+        'model': settings.GROQ_MODEL,
+        'messages': [
             {'role': 'system', 'content': SYSTEM_PROMPT},
             *messages,
         ],
     }).encode('utf-8')
     request = urllib.request.Request(
-        'https://api.x.ai/v1/responses',
+        'https://api.groq.com/openai/v1/chat/completions',
         data=payload,
         headers={
             'Authorization': f'Bearer {api_key}',
@@ -79,12 +79,19 @@ def chat_view(request):
             result = json.loads(response.read().decode('utf-8'))
     except urllib.error.HTTPError as error:
         detail = error.read().decode('utf-8', errors='replace')
-        return json_error(f'Grok request failed ({error.code}): {detail[:300]}', status=502)
+        if error.code == 401:
+            return json_error('The Groq API key is invalid or expired', status=503)
+        if error.code == 403:
+            return json_error(
+                'Groq rejected the request. Check that the API key and account access are active.',
+                status=503,
+            )
+        return json_error(f'Groq request failed ({error.code}): {detail[:300]}', status=502)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-        return json_error('Grok is temporarily unavailable. Please try again.', status=502)
+        return json_error('Groq is temporarily unavailable. Please try again.', status=502)
 
     reply = _extract_text(result)
     if not reply:
-        return json_error('Grok returned an empty response', status=502)
+        return json_error('Groq returned an empty response', status=502)
 
-    return json_success(reply=reply, model=settings.XAI_MODEL)
+    return json_success(reply=reply, model=settings.GROQ_MODEL)
