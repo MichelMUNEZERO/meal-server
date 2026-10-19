@@ -11,7 +11,7 @@ from meal_system.api_utils import json_error, json_success, parse_json_body, req
 MAX_MESSAGES = 30
 MAX_MESSAGE_LENGTH = 4000
 SYSTEM_PROMPT = (
-    'You are Grok, the helpful assistant inside Michel Events meal tracking. '
+    'You are the helpful customer support assistant inside Michel Events meal tracking. '
     'Help users understand their meal plan, attendance, and how to use this system. '
     'Be concise, friendly, and honest when you do not have access to specific account data.'
 )
@@ -41,7 +41,7 @@ def chat_view(request):
 
     api_key = getattr(settings, 'GROQ_API_KEY', '')
     if not api_key:
-        return json_error('The Groq assistant is not configured yet', status=503)
+        return json_error('The customer support assistant is not configured yet', status=503)
 
     data = parse_json_body(request)
     incoming_messages = data.get('messages', [])
